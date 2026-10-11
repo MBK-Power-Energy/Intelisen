@@ -41,3 +41,26 @@ async function exportHtml(){let plotly=document.getElementById('plotly-bundle')?
 async function init(){try{const files=['levels.csv','contracts.csv','trades.csv','Opcom_IDA/ida_coupling.csv'];const data=await Promise.all(files.map(async f=>{if(window.INTELISEN_CSV?.[f]!=null)return csvParse(window.INTELISEN_CSV[f]);const r=await fetch('data/'+f,{cache:'no-store'});if(!r.ok)throw Error('CSV indisponibil: '+f);return csvParse(await r.text());}));S.snapshot=window.INTELISEN_SNAPSHOT||await (await fetch('data/snapshot.json',{cache:'no-store'})).json();S.dates=[...new Set(data[0].map(r=>r.Data))].filter(d=>d>=S.snapshot.period_start&&d<=S.snapshot.period_end).sort();for(const id of ['from','to']){$(id).min=S.dates[0];$(id).max=S.dates.at(-1);}const now=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());const anchor=new Date(now+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-((anchor.getUTCDay()+6)%7));const monday=anchor.toISOString().slice(0,10);let visible=S.dates.filter(d=>d>=monday&&d<=now);if(!visible.length)visible=S.dates.slice(-7);$('from').value=visible[0];$('to').value=visible.at(-1);$('period-label').textContent=dayfmt(S.dates[0])+' – '+dayfmt(S.dates.at(-1));S.data=data;S.levels=new Map(data[0].map(r=>[r.Data+'|'+r.PH,Object.fromEntries(Object.entries(r).map(([k,v])=>[k,k==='Data'?v:num(v)]))]));S.contracts=data[1].map(c=>({...c,ph:Number(c.start_local.slice(11,13))+1}));S.trades=data[2];S.ida=data[3];const keys=Object.keys(data[0][0]).slice(2),markets=keys.slice(0,15),sen=keys.slice(15);fillSelect('markets',markets,['PZU pret','ID VWAP','ID volum buy','ID volum sell']);fillSelect('sen',sen,['Eroare consum','Eroare solar DA','Eroare eolian DA',STATUS]);
  for(let ph=1;ph<=24;ph++){let b=document.createElement('button');b.textContent='PH-'+String(ph).padStart(2,'0');b.classList.toggle('active',ph===1);b.onclick=()=>{S.ph=ph;[...$('tabs').children].forEach(x=>x.classList.toggle('active',x===b));render();};$('tabs').append(b);}document.querySelectorAll('input,select').forEach(e=>e.addEventListener('change',render));$('csv').onclick=exportCsv;$('html').onclick=()=>exportHtml().catch(error=>alert(error.message));$('snapshot').textContent=`${S.contracts.length} contracte · ${S.trades.length.toLocaleString('ro-RO')} tranzactii · Actualizat: ${new Date(S.snapshot.created_at_utc).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest'})} · Datele zilei curente sunt partiale`;render();}catch(e){$('loading').className='error';$('loading').textContent=e.message+' · Porneste printr-un server HTTP local sau GitHub Pages; nu prin file://.';}}
 init();
+
+// Published CSV snapshots are checked periodically; credentials never reach the browser.
+let refreshBusy=false;
+async function refreshPublished(){
+ if(location.protocol==='file:'||!S.data||refreshBusy)return;
+ refreshBusy=true;
+ try{
+  const response=await fetch('data/snapshot.json',{cache:'no-store'});if(!response.ok)return;
+  const snapshot=await response.json();if(snapshot.created_at_utc===S.snapshot.created_at_utc)return;
+  const files=['levels.csv','contracts.csv','trades.csv','Opcom_IDA/ida_coupling.csv'];
+  const data=await Promise.all(files.map(async f=>{const r=await fetch('data/'+f,{cache:'no-store'});if(!r.ok)throw Error('Snapshot incomplet');return csvParse(await r.text());}));
+  if(!data[0].length||!data[1].length||!data[2].length)throw Error('Snapshot gol');
+  S.data=data;S.snapshot=snapshot;S.levels=new Map(data[0].map(r=>[r.Data+'|'+r.PH,Object.fromEntries(Object.entries(r).map(([k,v])=>[k,k==='Data'?v:num(v)]))]));
+  S.contracts=data[1].map(c=>({...c,ph:Number(c.start_local.slice(11,13))+1}));S.trades=data[2];S.ida=data[3];
+  S.dates=[...new Set(data[0].map(r=>r.Data))].filter(d=>d>=snapshot.period_start&&d<=snapshot.period_end).sort();
+  for(const id of ['from','to']){$(id).min=S.dates[0];$(id).max=S.dates.at(-1);}
+  $('period-label').textContent=dayfmt(S.dates[0])+' – '+dayfmt(S.dates.at(-1));
+  $('snapshot').textContent=`${S.contracts.length} contracte · ${S.trades.length.toLocaleString('ro-RO')} tranzactii · Actualizat: ${new Date(snapshot.created_at_utc).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest'})} · Azi partial`;
+  render();
+ }catch(error){$('loading').textContent='Actualizarea paginii nu a reusit; ultimele date valide sunt pastrate.';}
+ finally{refreshBusy=false;}
+}
+setInterval(refreshPublished,60000);
