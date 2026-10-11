@@ -14,7 +14,7 @@ begin
  if exists(select 1 from damas_private.entsoe_worker_jobs where finished_at is null and claimed_at>now()-interval '2 minutes') then return '[]'::jsonb;end if;
  select * into p from damas_private.entsoe_profiles where id=mod(floor(extract(epoch from now())/60)::bigint,54);
  d:=(now() at time zone 'Europe/Bucharest')::date;
- for q in select p.name as dataset,d as delivery_date union all select p.name,d+1 where p.name in ('load_day_ahead','generation_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','wind_solar_forecast_current') union all (select dataset,delivery_date from damas_private.entsoe_queue where finished_at is null order by priority desc,attempted_at nulls first,delivery_date,dataset limit 1) loop
+ for q in select p.name as dataset,d as delivery_date union all select p.name,d+1 where p.name in ('load_day_ahead','generation_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','wind_solar_forecast_current') union all (select dataset,delivery_date from damas_private.entsoe_queue where finished_at is null order by priority desc,attempted_at nulls first,delivery_date,dataset limit 3) loop
  select * into p from damas_private.entsoe_profiles where name=q.dataset;
  a:=q.delivery_date::timestamp at time zone 'Europe/Bucharest';b:=(q.delivery_date+1)::timestamp at time zone 'Europe/Bucharest';
  if p.schedule='annual' then a:=make_date(extract(year from q.delivery_date)::integer,1,1)::timestamp at time zone 'Europe/Bucharest';b:=make_date(extract(year from q.delivery_date)::integer+1,1,1)::timestamp at time zone 'Europe/Bucharest';end if;
@@ -42,3 +42,5 @@ end $$;
 revoke all on function public.entsoe_worker_claim(text),public.entsoe_worker_finish(bigint,jsonb,text) from public,anon,authenticated;
 grant execute on function public.entsoe_worker_claim(text),public.entsoe_worker_finish(bigint,jsonb,text) to service_role;
 select 'Worker database ready' as result;
+
+update damas_private.entsoe_queue set priority=200 where finished_at is null and dataset in ('load_actual','generation_actual','load_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday');
