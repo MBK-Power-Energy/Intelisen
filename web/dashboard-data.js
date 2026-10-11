@@ -3,7 +3,7 @@ import {SeriesStore,opcom,xmlSeries,numeric,signedImbalance} from './normalize.j
 import {dayRange,midnight,addDays,localParts} from './time.js';
 
 export const MARKETS=['PZU pret','PZU volum tranzactionat','PZU volum buy','PZU volum sell','IDA1 pret','IDA2 pret','IDA3 pret','ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell','PZU 15 min (RON/MWh)','PZU 30 min (RON/MWh)','PZU 60 min (RON/MWh)'];
-export const FUNDAMENTALS=['Temperatura','Consum DA','Consum Actual','Eroare consum','Solar DA','Solar ID','Solar Actual','Eroare solar DA','Eroare solar ID','Eolian DA','Eolian ID','Eolian Actual','Eroare eolian DA','Eroare eolian ID','Sarcina reziduala DA','Sarcina reziduala ID','Sarcina reziduala Actual','Import DA','Export DA','Import Actual','Export Actual','Indisponibilitati','Echilibrare (MWh)','Echilibrare Status','Echilibrare pret deficit','Echilibrare pret excedent','ENTSO-E pret deficit (RON/MWh)','ENTSO-E pret excedent (RON/MWh)','DAMAS Activated reserve (brut)','DAMAS Volume up (brut)','DAMAS Volume down (brut)','DAMAS dezechilibru estimat (brut)'];
+export const FUNDAMENTALS=['Temperatura','Consum DA','Consum Actual','Eroare consum','Solar DA','Solar ID','Solar Actual','Eroare solar DA','Eroare solar ID','Eolian DA','Eolian ID','Eolian Actual','Eroare eolian DA','Eroare eolian ID','Sarcina reziduala DA','Sarcina reziduala ID','Sarcina reziduala Actual','Import DA','Export DA','Import Total','Export Total','Import Actual','Export Actual','Indisponibilitati','Echilibrare (MWh)','Echilibrare Status','Echilibrare pret deficit','Echilibrare pret excedent','ENTSO-E pret deficit (RON/MWh)','ENTSO-E pret excedent (RON/MWh)','DAMAS Activated reserve (brut)','DAMAS Volume up (brut)','DAMAS Volume down (brut)','DAMAS dezechilibru estimat (brut)'];
 const coreDatasets=['load_actual','load_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','generation_actual','imbalance_volumes','imbalance_prices','outages_production_A05','outages_production_A09','outages_production_A13'];
 const labelled={load_actual:'Consum Actual',load_day_ahead:'Consum DA'};
 function entsoe(documents,store,low,high){
@@ -21,8 +21,8 @@ function entsoe(documents,store,low,high){
           if(label.startsWith('Eolian ')){const name=label+'|'+m.psr;if(!wind.has(label))wind.set(label,new Set());wind.get(label).add(name);store.interval(name,start,end,point.quantity);}
           else store.interval(label,start,end,point.quantity,'mean','MW');
         }
-        const flow=/^(commercial_exchanges|physical_flows)_([A-Z]+)_(import|export)(?:_A01)?$/.exec(document.dataset);
-        if(flow&&m.unit==='MAW')store.interval((flow[3]==='import'?'Import':'Export')+' '+(flow[1]==='physical_flows'?'Actual':'DA')+'|'+flow[2],start,end,point.quantity);
+        const flow=/^(commercial_exchanges|physical_flows)_([A-Z]+)_(import|export)(?:_(A01|A05))?$/.exec(document.dataset);
+        if(flow&&m.unit==='MAW')store.interval((flow[3]==='import'?'Import':'Export')+' '+(flow[1]==='physical_flows'?'Actual':flow[4]==='A05'?'Total':'DA')+'|'+flow[2],start,end,point.quantity);
         if(document.dataset==='imbalance_volumes'&&m.unit==='MWH')store.interval('Echilibrare (MWh)',start,end,signedImbalance(point.quantity,m.direction),'sum','MWh');
         if(document.dataset==='imbalance_prices'&&m.currency==='RON'&&['A04','A05'].includes(point['imbalance_Price.category']))store.interval('ENTSO-E pret '+(point['imbalance_Price.category']==='A05'?'deficit':'excedent')+' (RON/MWh)',start,end,point.secondaryPrice,'mean','RON/MWh');
       }
@@ -32,7 +32,7 @@ function entsoe(documents,store,low,high){
   if(outages.size){const lost=new Map();for(const series of outages.values()){const m=series.metadata;if(m.status!=='A05'||m.unit!=='MAW'||m.capacity===null||!m.resourceId)continue;for(const period of series.periods){const points=[...period.points].sort((a,b)=>a.position-b.position);for(let i=0;i<points.length;i++){const point=points[i];if(point.quantity===null||!period.resolution)continue;const start=Math.max(low,period.start+(point.position-1)*period.resolution),end=Math.min(high,m.curve==='A03'?(i+1<points.length?period.start+(points[i+1].position-1)*period.resolution:period.end):period.start+point.position*period.resolution);for(let t=Math.ceil(start/900000)*900000;t<end;t+=900000){if(!lost.has(t))lost.set(t,new Map());const units=lost.get(t);units.set(m.resourceId,Math.max(units.get(m.resourceId)||0,m.capacity-point.quantity,0));}}}}
     for(const [time,units]of lost)store.put('Indisponibilitati',time,[...units.values()].reduce((a,b)=>a+b,0),'mean','MW');
   }
-  for(const kind of ['DA','Actual'])for(const direction of ['Import','Export']){const label=direction+' '+kind,sources=['BG','HU','RS','MD','UA'].map(country=>store.values.get(label+'|'+country));if(sources.some(s=>!s))continue;for(const time of sources[0].keys()){const values=sources.map(s=>s.get(time));if(values.every(Number.isFinite))store.put(label,time,values.reduce((a,b)=>a+b,0),'mean','MW');}}
+  for(const kind of ['DA','Total','Actual'])for(const direction of ['Import','Export']){const label=direction+' '+kind,sources=['BG','HU','RS','MD','UA'].map(country=>store.values.get(label+'|'+country));if(sources.some(s=>!s))continue;for(const time of sources[0].keys()){const values=sources.map(s=>s.get(time));if(values.every(Number.isFinite))store.put(label,time,values.reduce((a,b)=>a+b,0),'mean','MW');}}
 }
 function damas(rows,store){
   for(const row of rows){const p=row.payload,start=Date.parse(row.interval_start),end=Date.parse(row.interval_end);
@@ -46,7 +46,7 @@ export async function loadDashboard(from,to){
   if(from<'2026-10-01'||to<from)throw Error('Selectează o perioadă începând cu 1 octombrie 2026.');
   const low=midnight(addDays(from,-1)),high=midnight(addDays(to,1));
   const range={delivery_date:'gte.'+addDays(from,-1),and:`(delivery_date.lte.${addDays(to,1)})`};
-  const flowDatasets=['BG','HU','RS','MD','UA'].flatMap(c=>['import','export'].flatMap(d=>[`commercial_exchanges_${c}_${d}_A01`,`physical_flows_${c}_${d}`]));
+  const flowDatasets=['BG','HU','RS','MD','UA'].flatMap(c=>['import','export'].flatMap(d=>[`commercial_exchanges_${c}_${d}_A01`,`commercial_exchanges_${c}_${d}_A05`,`physical_flows_${c}_${d}`]));
   const [tables,rates,documents,reports,weather,npAccess]=await Promise.all([
     cachedRows('opcom_tables',{...range,order:'delivery_date,source,dataset'},r=>r.source+'|'+r.delivery_date+'|'+r.dataset),cachedRows('bnr_rates',{order:'rate_date'},r=>r.rate_date),
     cachedRows('entsoe_documents',{...range,dataset:'in.('+[...coreDatasets,...flowDatasets].join(',')+')',order:'dataset,delivery_date'},r=>r.dataset+'|'+r.delivery_date),
