@@ -23,12 +23,12 @@ function draw(){
  }
  $('senEmpty').hidden=selected.length>0;
 }
-async function refresh(){if(busy)return;const from=$('senFrom').value,to=$('senTo').value;if(!from||!to||from<'2026-10-01'||to<from){$('senOverviewStatus').textContent='Selectează un interval valid începând cu 1 octombrie 2026.';return;}busy=true;$('senOverviewStatus').textContent='Se încarcă intervalul '+from+' – '+to+'…';try{
+async function refresh(){if(busy)return;const from=$('senFrom').value,to=$('senTo').value;if(!from||!to||from<'2026-10-01'||to<from){$('senOverviewStatus').hidden=false;$('senOverviewStatus').textContent='Selectează un interval valid începând cu 1 octombrie 2026.';return;}busy=true;$('senOverviewStatus').hidden=false;$('senOverviewStatus').textContent='Se încarcă datele SEN…';try{
  const data=await publicRows('sen_observations',{observed_at:'gte.'+new Date(midnight(from,'Europe/Bucharest')).toISOString(),and:`(observed_at.lt.${new Date(midnight(addDays(to,1),'Europe/Bucharest')).toISOString()})`,order:'observed_at'});
  if(from!==$('senFrom').value||to!==$('senTo').value)return;rows=data;
  const end=rows.at(-1);for(const [id,key]of [['liveConsumption','consumption_mw'],['liveProduction','production_mw'],['liveBalance','balance_mw']])$(id).textContent=fmt(end?.[key]);$('liveTime').textContent=end?dateTime(end.observed_at):'—';
- $('senOverviewStatus').textContent=from+' – '+to+' · '+(end?'ultima observație: '+new Date(end.observed_at).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest'}):'fără observații pentru intervalul selectat')+' · verificare automată la 60 secunde';draw();
- }catch(error){$('senOverviewStatus').textContent='SEN: '+error.message+(rows.length?' · sunt păstrate ultimele date citite':'');}finally{busy=false;if(from!==$('senFrom').value||to!==$('senTo').value)refresh();}}
+ $('senOverviewStatus').hidden=Boolean(end);$('senOverviewStatus').textContent=end?'':'Fără observații pentru intervalul selectat.';draw();
+ }catch(error){$('senOverviewStatus').hidden=false;$('senOverviewStatus').textContent='SEN: '+error.message+(rows.length?' · sunt păstrate ultimele date citite':'');}finally{busy=false;if(from!==$('senFrom').value||to!==$('senTo').value)refresh();}}
 export function setupSenOverview(){
  const cursorTime=document.createElement('p');cursorTime.id='senCursorTime';cursorTime.className='hint';cursorTime.setAttribute('aria-live','off');$('senOverviewChart').before(cursorTime);
  let rangeTimer;const changed=()=>{clearTimeout(rangeTimer);rangeTimer=setTimeout(refresh,200);};
