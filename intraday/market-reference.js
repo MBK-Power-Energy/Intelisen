@@ -1,4 +1,4 @@
-import {opcom,SeriesStore} from '../../web/normalize.js';
+import {opcom,SeriesStore} from '../web/normalize.js';
 const url='https://squtjqwjnwlnqlvfzlzg.supabase.co',key='sb_publishable_yW7kn9Ut89ir2sTNTueDDw_S5vO3eUU';
 async function rows(table,params){const result=[];for(let offset=0;;offset+=1000){const q=new URLSearchParams({...params,offset,limit:1000});const r=await fetch(url+'/rest/v1/'+table+'?'+q,{headers:{apikey:key},signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('OPCOM: HTTP '+r.status);const page=await r.json();result.push(...page);if(page.length<1000)return result;}}
 export async function marketReference(from,to){const [tables,rates]=await Promise.all([rows('opcom_tables',{delivery_date:'gte.'+from,and:'(delivery_date.lte.'+to+')',order:'delivery_date,source,dataset'}),rows('bnr_rates',{order:'rate_date'})]);const store=new SeriesStore();opcom(tables,rates,store);return store;}
