@@ -4,7 +4,7 @@ import {loadDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-dat
 import {nordpool} from './web/api.js';
 import {localParts,addDays} from './web/time.js';
 'use strict';
-const $=id=>document.getElementById(id), S={ph:1}, STATUS='Echilibrare Status', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
+const $=id=>document.getElementById(id), S={ph:1}, STATUS='ENTSO-E · Statut dezechilibru', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
 const CONFIG={responsive:true,displaylogo:false}, nf=v=>v==null?'':Number(v).toFixed(1), num=v=>v===''||v==null?null:Number(v), dayfmt=d=>d.split('-').reverse().join('.');
 function selected(id){return [...$(id).selectedOptions].map(o=>o.value);}
 function indicators(){return [...selected('markets'),...selected('sen')];}

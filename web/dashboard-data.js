@@ -3,7 +3,7 @@ import {SeriesStore,opcom,xmlSeries,numeric,signedImbalance} from './normalize.j
 import {dayRange,midnight,addDays,localParts} from './time.js';
 
 export const MARKETS=['PZU pret','PZU volum tranzactionat','PZU volum buy','PZU volum sell','IDA1 pret','IDA2 pret','IDA3 pret','ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell','PZU 15 min (RON/MWh)','PZU 30 min (RON/MWh)','PZU 60 min (RON/MWh)'];
-export const FUNDAMENTALS=['Temperatura','Consum DA','Consum Actual','Eroare consum','Solar DA','Solar ID','Solar Actual','Eroare solar DA','Eroare solar ID','Eolian DA','Eolian ID','Eolian Actual','Eroare eolian DA','Eroare eolian ID','Sarcina reziduala DA','Sarcina reziduala ID','Sarcina reziduala Actual','Import DA','Export DA','Import Total','Export Total','Import Actual','Export Actual','Indisponibilitati','Echilibrare (MWh)','Echilibrare Status','Echilibrare pret deficit','Echilibrare pret excedent','ENTSO-E pret deficit (RON/MWh)','ENTSO-E pret excedent (RON/MWh)','DAMAS Activated reserve (brut)','DAMAS Volume up (brut)','DAMAS Volume down (brut)','DAMAS dezechilibru estimat (brut)'];
+export const FUNDAMENTALS=['Temperatura','Consum DA','Consum Actual','Eroare consum','Solar DA','Solar ID','Solar Actual','Eroare solar DA','Eroare solar ID','Eolian DA','Eolian ID','Eolian Actual','Eroare eolian DA','Eroare eolian ID','Sarcina reziduala DA','Sarcina reziduala ID','Sarcina reziduala Actual','Import DA','Export DA','Import Total','Export Total','Import Actual','Export Actual','Indisponibilitati','ENTSO-E · Dezechilibru (MWh)','ENTSO-E · Statut dezechilibru','DAMAS · Preț dezechilibru deficit (RON/MWh)','DAMAS · Preț dezechilibru excedent (RON/MWh)','ENTSO-E · Preț dezechilibru deficit (RON/MWh)','ENTSO-E · Preț dezechilibru excedent (RON/MWh)','DAMAS · Rezervă activată (brut)','DAMAS · Volum reglaj în sus (brut)','DAMAS · Volum reglaj în jos (brut)','DAMAS · Dezechilibru estimat (brut)'];
 const coreDatasets=['load_actual','load_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','generation_actual','imbalance_volumes','imbalance_prices','outages_production_A05','outages_production_A09','outages_production_A13'];
 const labelled={load_actual:'Consum Actual',load_day_ahead:'Consum DA'};
 function entsoe(documents,store,low,high){
@@ -23,8 +23,8 @@ function entsoe(documents,store,low,high){
         }
         const flow=/^(commercial_exchanges|physical_flows)_([A-Z]+)_(import|export)(?:_(A01|A05))?$/.exec(document.dataset);
         if(flow&&m.unit==='MAW')store.interval((flow[3]==='import'?'Import':'Export')+' '+(flow[1]==='physical_flows'?'Actual':flow[4]==='A05'?'Total':'DA')+'|'+flow[2],start,end,point.quantity);
-        if(document.dataset==='imbalance_volumes'&&m.unit==='MWH')store.interval('Echilibrare (MWh)',start,end,signedImbalance(point.quantity,m.direction),'sum','MWh');
-        if(document.dataset==='imbalance_prices'&&m.currency==='RON'&&['A04','A05'].includes(point['imbalance_Price.category']))store.interval('ENTSO-E pret '+(point['imbalance_Price.category']==='A05'?'deficit':'excedent')+' (RON/MWh)',start,end,point.secondaryPrice,'mean','RON/MWh');
+        if(document.dataset==='imbalance_volumes'&&m.unit==='MWH')store.interval('ENTSO-E · Dezechilibru (MWh)',start,end,signedImbalance(point.quantity,m.direction),'sum','MWh');
+        if(document.dataset==='imbalance_prices'&&m.currency==='RON'&&['A04','A05'].includes(point['imbalance_Price.category']))store.interval('ENTSO-E · Preț dezechilibru '+(point['imbalance_Price.category']==='A05'?'deficit':'excedent')+' (RON/MWh)',start,end,point.secondaryPrice,'mean','RON/MWh');
       }
     }
   }
@@ -36,8 +36,8 @@ function entsoe(documents,store,low,high){
 }
 function damas(rows,store){
   for(const row of rows){const p=row.payload,start=Date.parse(row.interval_start),end=Date.parse(row.interval_end);
-    if(row.report==='estimatedImbalancePrices')for(const [label,field,mode,unit]of [['Echilibrare pret deficit','estimatedPriceNegativeImbalance','mean','RON/MWh'],['Echilibrare pret excedent','estimatedPricePositiveImbalance','mean','RON/MWh'],['DAMAS Volume up (brut)','sumQup','mean','unconfirmed'],['DAMAS Volume down (brut)','sumQdn','mean','unconfirmed']])store.interval(label,start,end,p[field],mode,unit);
-    if(row.report==='estimatedPowerSystemImbalance'&&p.type!=='N/A'){store.interval('DAMAS Activated reserve (brut)',start,end,p.activatedReserve,'mean','unconfirmed');store.interval('DAMAS dezechilibru estimat (brut)',start,end,p.estimatedSystemImbalance,'mean','unconfirmed');}
+    if(row.report==='estimatedImbalancePrices')for(const [label,field,mode,unit]of [['DAMAS · Preț dezechilibru deficit (RON/MWh)','estimatedPriceNegativeImbalance','mean','RON/MWh'],['DAMAS · Preț dezechilibru excedent (RON/MWh)','estimatedPricePositiveImbalance','mean','RON/MWh'],['DAMAS · Volum reglaj în sus (brut)','sumQup','mean','unconfirmed'],['DAMAS · Volum reglaj în jos (brut)','sumQdn','mean','unconfirmed']])store.interval(label,start,end,p[field],mode,unit);
+    if(row.report==='estimatedPowerSystemImbalance'&&p.type!=='N/A'){store.interval('DAMAS · Rezervă activată (brut)',start,end,p.activatedReserve,'mean','unconfirmed');store.interval('DAMAS · Dezechilibru estimat (brut)',start,end,p.estimatedSystemImbalance,'mean','unconfirmed');}
     if(row.report==='scheduledExchanges')for(const country of ['BG','HU','RS','MD','UA'])for(const direction of ['Import','Export']){
       const field=direction==='Import'?country.toLowerCase()+'ro':'ro'+country.toLowerCase();
       for(const [kind,key]of [['DA','dayAhead'],['Total','commercial']]){const label=direction+' '+kind+'|'+country;if(!store.values.get(label)?.has(start))store.interval(label,start,end,p[field]?.[key],'mean','MW');}
@@ -70,7 +70,7 @@ export async function loadDashboard(from,to){
     r['Eroare consum']=difference(r,'Consum Actual','Consum DA');
     for(const component of ['Solar','Eolian'])for(const version of ['DA','ID'])r[`Eroare ${component==='Solar'?'solar':'eolian'} ${version}`]=difference(r,component+' Actual',component+' '+version);
     for(const version of ['DA','ID','Actual']){const keys=[version==='Actual'?'Consum Actual':'Consum DA','Solar '+version,'Eolian '+version];r['Sarcina reziduala '+version]=keys.every(k=>numeric(r[k])!==null)?r[keys[0]]-r[keys[1]]-r[keys[2]]:null;}
-    r['Spread ID VWAP - PZU']=difference(r,'ID VWAP','PZU pret');const net=r['Echilibrare (MWh)'];r['Echilibrare Status']=net===null?null:Math.sign(net);levels.push(r);
+    r['Spread ID VWAP - PZU']=difference(r,'ID VWAP','PZU pret');const net=r['ENTSO-E · Dezechilibru (MWh)'];r['ENTSO-E · Statut dezechilibru']=net===null?null:Math.sign(net);levels.push(r);
   }
   return {levels,contracts,ida,npAccess,units:Object.fromEntries(store.units),collectedAt:new Date().toISOString(),coverage:{opcom:tables.length,entsoe:documents.length,damas:reports.length,weather:weather.length}};
 }
