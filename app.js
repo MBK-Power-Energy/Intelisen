@@ -1,3 +1,4 @@
+import {setupSenOverview} from './web/sen-overview.js';
 import {loadDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js';
 import {nordpool} from './web/api.js';
 import {localParts,addDays} from './web/time.js';
@@ -79,6 +80,7 @@ async function init(){
  nordpool.auth.onAuthStateChange((event,session)=>{if(!session){clearPrivate();render();}else setTimeout(refreshOnline,0);});
  await refreshOnline();await setupExplorer();
 }
+setupSenOverview();
 init().catch(error=>{$('loading').textContent=error.message;});
 setInterval(()=>{if(!document.hidden)refreshOnline()},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshOnline()});
