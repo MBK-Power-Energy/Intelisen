@@ -9,11 +9,6 @@ async function allRows(table,filters){let rows=[];for(let start=0;;start+=1000){
 function clearPrivate(){generation++;contracts=[];lastBars=null;for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';$('contract').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=!!session;$('logout').hidden=!session;}
 async function auth(next){session=next;if(!session){clearPrivate();message('Autentifică-te pentru a vedea datele Nord Pool.');return;}
  const {data,error}=await client.rpc('nordpool_authorized');if(error||data!==true){clearPrivate();message('Acest cont nu are acces la Nord Pool.');return;}$('login').hidden=true;$('private').hidden=false;$('loginShortcut').hidden=true;$('logout').hidden=false;await load();}
-$('googleLogin').onclick=async()=>{
- const button=$('googleLogin'),feedback=$('loginFeedback');button.disabled=true;feedback.hidden=false;feedback.dataset.state='pending';feedback.textContent='Se deschide autentificarea Google…';
- try{const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error)throw error;}
- catch(error){feedback.dataset.state='error';feedback.textContent='Autentificarea Google nu a putut porni. '+error.message;button.disabled=false;}
-};
 $('loginForm').onsubmit=async e=>{
  e.preventDefault();const button=e.target.querySelector('button'),feedback=$('loginFeedback');
  const show=(text,state)=>{feedback.hidden=false;feedback.textContent=text;feedback.dataset.state=state;};
