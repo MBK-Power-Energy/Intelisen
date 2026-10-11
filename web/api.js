@@ -1,4 +1,5 @@
-export const PROJECTS={sen:{url:'https://squtjqwjnwlnqlvfzlzg.supabase.co',key:'sb_publishable_yW7kn9Ut89ir2sTNTueDDw_S5vO3eUU'},nordpool:{url:'https://qumxkyavlavixzaevipw.supabase.co',key:'sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS'}};
+import {PROJECTS} from './project-config.js';
+export {PROJECTS};
 export const nordpool=supabase.createClient(PROJECTS.nordpool.url,PROJECTS.nordpool.key);
 export async function publicRows(table,parameters={}){
   const rows=[];

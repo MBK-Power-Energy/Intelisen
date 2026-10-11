@@ -4,7 +4,7 @@ Aplicație statică pe GitHub Pages, cu date citite din Supabase. Tema implicit�
 
 ## Date și execuție online
 
-Nordpool (`qumxkyavlavixzaevipw`): contracte TEL, statistici Total și tranzacții. SEN (`squtjqwjnwlnqlvfzlzg`): DAMAS, SEN, OPCOM PZU/IDA, ENTSO-E, Open-Meteo și curs BNR. Volue este exclus. Colectoarele rulează prin Supabase Cron; ENTSO-E folosește o Edge Function care acceptă inclusiv răspunsuri ZIP. Calculatorul local nu este necesar pentru colectare.
+Un singur proiect Supabase (`qumxkyavlavixzaevipw`) găzduiește contractele TEL, statisticile Total, tranzacțiile, DAMAS, SEN, OPCOM PZU/IDA, ENTSO-E, Open-Meteo și cursul BNR. SEN și Indicatori sunt publice; Intraday rămâne privat prin RLS. Volue este exclus. Colectoarele rulează prin Supabase Cron; ENTSO-E folosește o Edge Function care acceptă inclusiv răspunsuri ZIP. Calculatorul local nu este necesar pentru colectare.
 
 Istoricul începe la 1 octombrie 2026. Importurile rulează în cozi în cloud; lipsurile sunt afișate ca lipsuri, fără valori fabricate. Datele și reviziile originale sunt păstrate. Exploratorul surselor oferă grafice și export JSON. Scripturile din `collectors/` sunt adaptoare de referință; nu reprezintă execuția online.
 
@@ -12,9 +12,9 @@ Credențialele furnizorilor sunt numai în Vault. Cheile publishable din pagină
 
 ## Configurare
 
-În proiectul SEN, se aplică în ordine: `demo-live/setup.sql`, `supabase/damas-reports.sql`, `supabase/opcom.sql`, `supabase/weather.sql`, `supabase/bnr.sql`, `supabase/sen-history.sql`, `supabase/entsoe-documents.sql`, `supabase/entsoe-worker.sql`. Se configurează secretul `entsoe_token` în Vault, se publică `supabase/functions/entsoe-collector/index.ts`, apoi se aplică `supabase/entsoe-worker-cron.sql`. Secretul intern al workerului este creat de SQL. Funcția verifică acest secret pe lângă autentificarea gatewayului.
+În proiectul unic Intelisen, se aplică în ordine: `demo-live/setup.sql`, `supabase/damas-reports.sql`, `supabase/opcom.sql`, `supabase/weather.sql`, `supabase/bnr.sql`, `supabase/sen-history.sql`, `supabase/entsoe-documents.sql`, `supabase/entsoe-worker.sql`. Se configurează secretul `entsoe_token` în Vault, se publică `supabase/functions/entsoe-collector/index.ts`, apoi se aplică `supabase/entsoe-worker-cron.sql`. Secretul intern al workerului este creat de SQL. Funcția verifică acest secret pe lângă autentificarea gatewayului.
 
-În proiectul Nordpool: `supabase/nordpool.sql`, `supabase/nordpool-total.sql`, `supabase/nordpool-history.sql`. Vault: `np_username`, `np_password`, opțional `np_subscription_key`. Lista de emailuri autorizate se gestionează administrativ, separat de codul public.
+În același proiect, pentru Intraday: `supabase/nordpool.sql`, `supabase/nordpool-total.sql`, `supabase/nordpool-history.sql`. Vault: `np_username`, `np_password`, opțional `np_subscription_key`. Lista de emailuri autorizate se gestionează administrativ, separat de codul public.
 
 GitHub Pages: Settings → Pages → main → / (root). Publicarea codului este distinctă de colectarea datelor. Tema și Login sunt disponibile în dashboard, demo SEN și pagina Nord Pool.
 

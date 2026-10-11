@@ -4,12 +4,11 @@
     "Volue"
   ],
   "projects": {
-    "Nordpool": "qumxkyavlavixzaevipw",
-    "SEN": "squtjqwjnwlnqlvfzlzg"
+    "Intelisen": "qumxkyavlavixzaevipw"
   },
   "sources": {
     "nordpool": {
-      "project": "Nordpool",
+      "project": "Intelisen",
       "area": "TEL",
       "datasets": [
         "ContractStatistics/ByAreas",
@@ -20,7 +19,7 @@
       "trade_side": "not provided; never infer buy/sell"
     },
     "opcom_pzu": {
-      "project": "SEN",
+      "project": "Intelisen",
       "resolutions_minutes": [
         15,
         30,
@@ -29,7 +28,7 @@
       "method": "HTML form scraping with session cookies and CSRF token"
     },
     "opcom_ida": {
-      "project": "SEN",
+      "project": "Intelisen",
       "auctions": [
         "IDA1",
         "IDA2",
@@ -39,7 +38,7 @@
       "method": "HTML form scraping with session cookies and CSRF token"
     },
     "entsoe": {
-      "project": "SEN",
+      "project": "Intelisen",
       "reports": [
         "load_actual",
         "load_day_ahead",
@@ -135,7 +134,7 @@
       ]
     },
     "damas": {
-      "project": "SEN",
+      "project": "Intelisen",
       "reports": [
         "marginalPricesOverview",
         "finalUnintentionalDeviations",
@@ -147,11 +146,11 @@
       ]
     },
     "sen_live": {
-      "project": "SEN",
+      "project": "Intelisen",
       "dataset": "11 operational MW series; UTC timestamps"
     },
     "open_meteo": {
-      "project": "SEN",
+      "project": "Intelisen",
       "models": [
         "era5",
         "ecmwf_ifs"
@@ -163,7 +162,7 @@
       "quarter_hour": "repeat hourly value four times, without interpolation"
     },
     "bnr": {
-      "project": "SEN",
+      "project": "Intelisen",
       "purpose": "EUR/RON conversion using official date rate, forward-filled across weekends",
       "endpoint": "https://curs.bnr.ro/files/xml/years/nbrfxrates{year}.xml"
     }

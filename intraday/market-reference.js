@@ -1,5 +1,6 @@
 import {opcom,SeriesStore} from '../web/normalize.js';
-const url='https://squtjqwjnwlnqlvfzlzg.supabase.co',key='sb_publishable_yW7kn9Ut89ir2sTNTueDDw_S5vO3eUU';
+import {PROJECTS} from '../web/project-config.js';
+const {url,key}=PROJECTS.sen;
 async function rows(table,params){const result=[];for(let offset=0;;offset+=1000){const q=new URLSearchParams({...params,offset,limit:1000});const r=await fetch(url+'/rest/v1/'+table+'?'+q,{headers:{apikey:key},signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('OPCOM: HTTP '+r.status);const page=await r.json();result.push(...page);if(page.length<1000)return result;}}
 export async function marketReference(from,to){const [tables,rates]=await Promise.all([rows('opcom_tables',{delivery_date:'gte.'+from,and:'(delivery_date.lte.'+to+')',order:'delivery_date,source,dataset'}),rows('bnr_rates',{order:'rate_date'})]);const store=new SeriesStore();opcom(tables,rates,store);return store;}
 export function contractReference(store,p){const start=Date.parse(p.deliveryStart),end=Date.parse(p.deliveryEnd),read=name=>{const values=[];for(let t=start;t<end;t+=900000){const v=store.values.get(name)?.get(t);if(!Number.isFinite(v))return [];values.push(v);}return values;};const pzu=read('PZU pret');return {pzu:pzu.length?pzu.reduce((a,b)=>a+b,0)/pzu.length:null,ida:[1,2,3].map(i=>{const a=read('IDA'+i+' pret');return a.length?{name:'IDA'+i,low:Math.min(...a),high:Math.max(...a)}:null;}).filter(Boolean)};}
