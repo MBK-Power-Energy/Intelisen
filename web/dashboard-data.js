@@ -38,7 +38,10 @@ function damas(rows,store){
   for(const row of rows){const p=row.payload,start=Date.parse(row.interval_start),end=Date.parse(row.interval_end);
     if(row.report==='estimatedImbalancePrices')for(const [label,field,mode,unit]of [['Echilibrare pret deficit','estimatedPriceNegativeImbalance','mean','RON/MWh'],['Echilibrare pret excedent','estimatedPricePositiveImbalance','mean','RON/MWh'],['DAMAS Volume up (brut)','sumQup','mean','unconfirmed'],['DAMAS Volume down (brut)','sumQdn','mean','unconfirmed']])store.interval(label,start,end,p[field],mode,unit);
     if(row.report==='estimatedPowerSystemImbalance'&&p.type!=='N/A'){store.interval('DAMAS Activated reserve (brut)',start,end,p.activatedReserve,'mean','unconfirmed');store.interval('DAMAS dezechilibru estimat (brut)',start,end,p.estimatedSystemImbalance,'mean','unconfirmed');}
-    if(row.report==='scheduledExchanges')for(const [label,field]of [['Import DA|MD','mdro'],['Export DA|MD','romd']])if(!store.values.get(label)?.has(start))store.interval(label,start,end,p[field]?.dayAhead);
+    if(row.report==='scheduledExchanges')for(const country of ['BG','HU','RS','MD','UA'])for(const direction of ['Import','Export']){
+      const field=direction==='Import'?country.toLowerCase()+'ro':'ro'+country.toLowerCase();
+      for(const [kind,key]of [['DA','dayAhead'],['Total','commercial']]){const label=direction+' '+kind+'|'+country;if(!store.values.get(label)?.has(start))store.interval(label,start,end,p[field]?.[key],'mean','MW');}
+    }
   }
 }
 const difference=(r,a,b)=>numeric(r[a])===null||numeric(r[b])===null?null:r[a]-r[b];
