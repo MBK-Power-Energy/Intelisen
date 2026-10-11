@@ -45,16 +45,18 @@ function damas(rows,store){
   }
 }
 const difference=(r,a,b)=>numeric(r[a])===null||numeric(r[b])===null?null:r[a]-r[b];
-export async function loadDashboard(from,to){
+export async function loadDashboard(from,to,publicOnly=false){
+  const npAccess=publicOnly?false:await authorized(),cacheKey='intelisen-indicatori-public|'+from+'|'+to;
+  if(!npAccess&&!publicOnly){try{const saved=JSON.parse(sessionStorage.getItem(cacheKey));if(saved&&Date.now()-saved.time<60000)return saved.data;}catch{}}
   if(from<'2026-10-01'||to<from)throw Error('Selectează o perioadă începând cu 1 octombrie 2026.');
   const low=midnight(addDays(from,-1)),high=midnight(addDays(to,1));
   const range={delivery_date:'gte.'+addDays(from,-1),and:`(delivery_date.lte.${addDays(to,1)})`};
   const flowDatasets=['BG','HU','RS','MD','UA'].flatMap(c=>['import','export'].flatMap(d=>[`commercial_exchanges_${c}_${d}_A01`,`commercial_exchanges_${c}_${d}_A05`,`physical_flows_${c}_${d}`]));
-  const [tables,rates,documents,reports,weather,npAccess]=await Promise.all([
+  const [tables,rates,documents,reports,weather]=await Promise.all([
     cachedRows('opcom_tables',{...range,order:'delivery_date,source,dataset'},r=>r.source+'|'+r.delivery_date+'|'+r.dataset),cachedRows('bnr_rates',{order:'rate_date'},r=>r.rate_date),
     cachedRows('entsoe_documents',{...range,dataset:'in.('+[...coreDatasets,...flowDatasets].join(',')+')',order:'dataset,delivery_date'},r=>r.dataset+'|'+r.delivery_date),
     cachedRows('damas_report_observations',{interval_start:'gte.'+new Date(low).toISOString(),and:`(interval_start.lt.${new Date(high).toISOString()})`,order:'report,interval_start'},r=>r.report+'|'+r.interval_start),
-    cachedRows('weather_weighted_hours',{observed_at:'gte.'+new Date(low).toISOString(),and:`(observed_at.lt.${new Date(high).toISOString()})`,order:'observed_at'},r=>r.observed_at),authorized()
+    cachedRows('weather_weighted_hours',{observed_at:'gte.'+new Date(low).toISOString(),and:`(observed_at.lt.${new Date(high).toISOString()})`,order:'observed_at'},r=>r.observed_at)
   ]);
   const store=new SeriesStore(),{ida}=opcom(tables,rates,store);
   damas(reports,store);entsoe(documents,store,low,high);
@@ -72,7 +74,9 @@ export async function loadDashboard(from,to){
     for(const version of ['DA','ID','Actual']){const keys=[version==='Actual'?'Consum Actual':'Consum DA','Solar '+version,'Eolian '+version];r['Sarcina reziduala '+version]=keys.every(k=>numeric(r[k])!==null)?r[keys[0]]-r[keys[1]]-r[keys[2]]:null;}
     r['Spread ID VWAP - PZU']=difference(r,'ID VWAP','PZU pret');const net=r['ENTSO-E · Dezechilibru (MWh)'];r['ENTSO-E · Statut dezechilibru']=net===null?null:Math.sign(net);levels.push(r);
   }
-  return {levels,contracts,ida,npAccess,units:Object.fromEntries(store.units),collectedAt:new Date().toISOString(),coverage:{opcom:tables.length,entsoe:documents.length,damas:reports.length,weather:weather.length}};
+  const result={levels,contracts,ida,npAccess,units:Object.fromEntries(store.units),collectedAt:new Date().toISOString(),coverage:{opcom:tables.length,entsoe:documents.length,damas:reports.length,weather:weather.length}};
+  if(publicOnly)try{sessionStorage.setItem(cacheKey,JSON.stringify({time:Date.now(),data:result}));}catch{}
+  return result;
 }
 export async function loadTrades(contracts,days,ph){
   const ids=contracts.filter(c=>days.includes(c.zi)&&c.ph===ph).map(c=>c.contractId);if(!ids.length)return [];

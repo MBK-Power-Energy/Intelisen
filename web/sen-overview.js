@@ -27,7 +27,7 @@ async function refresh(){if(busy)return;const from=$('senFrom').value,to=$('senT
  const data=await publicRows('sen_observations',{observed_at:'gte.'+new Date(midnight(from,'Europe/Bucharest')).toISOString(),and:`(observed_at.lt.${new Date(midnight(addDays(to,1),'Europe/Bucharest')).toISOString()})`,order:'observed_at'});
  if(from!==$('senFrom').value||to!==$('senTo').value)return;rows=data;
  const end=rows.at(-1);for(const [id,key]of [['liveConsumption','consumption_mw'],['liveProduction','production_mw'],['liveBalance','balance_mw']])$(id).textContent=fmt(end?.[key]);$('liveTime').textContent=end?dateTime(end.observed_at):'—';
- $('senOverviewStatus').hidden=Boolean(end);$('senOverviewStatus').textContent=end?'':'Fără observații pentru intervalul selectat.';draw();
+ $('senOverviewStatus').hidden=Boolean(end);$('senOverviewStatus').textContent=end?'':'Fără observații pentru intervalul selectat.';draw();window.dispatchEvent(new Event('sen-ready'));
  }catch(error){$('senOverviewStatus').hidden=false;$('senOverviewStatus').textContent='SEN: '+error.message+(rows.length?' · sunt păstrate ultimele date citite':'');}finally{busy=false;if(from!==$('senFrom').value||to!==$('senTo').value)refresh();}}
 export function setupSenOverview(){
  const cursorTime=document.createElement('p');cursorTime.id='senCursorTime';cursorTime.className='hint';cursorTime.setAttribute('aria-live','off');$('senOverviewChart').before(cursorTime);
