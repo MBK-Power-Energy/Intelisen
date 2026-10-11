@@ -1,0 +1,171 @@
+{
+  "history_start": "2026-10-01",
+  "excluded_providers": [
+    "Volue"
+  ],
+  "projects": {
+    "Nordpool": "qumxkyavlavixzaevipw",
+    "SEN": "squtjqwjnwlnqlvfzlzg"
+  },
+  "sources": {
+    "nordpool": {
+      "project": "Nordpool",
+      "area": "TEL",
+      "datasets": [
+        "ContractStatistics/ByAreas",
+        "ContractStatistics/Total",
+        "Trades/ByDeliveryStart",
+        "Trades/ByTradeTime"
+      ],
+      "trade_side": "not provided; never infer buy/sell"
+    },
+    "opcom_pzu": {
+      "project": "SEN",
+      "resolutions_minutes": [
+        15,
+        30,
+        60
+      ],
+      "method": "HTML form scraping with session cookies and CSRF token"
+    },
+    "opcom_ida": {
+      "project": "SEN",
+      "auctions": [
+        "IDA1",
+        "IDA2",
+        "IDA3"
+      ],
+      "resolution_minutes": 15,
+      "method": "HTML form scraping with session cookies and CSRF token"
+    },
+    "entsoe": {
+      "project": "SEN",
+      "reports": [
+        "load_actual",
+        "load_day_ahead",
+        "installed_capacity",
+        "generation_day_ahead",
+        "wind_solar_forecast",
+        "generation_actual",
+        "reservoirs",
+        "commercial_exchanges",
+        "physical_flows",
+        "outages_production",
+        "outages_generation",
+        "imbalance_prices",
+        "imbalance_volumes",
+        "balancing_bids"
+      ],
+      "neighbours": {
+        "BG": "10YCA-BULGARIA-R",
+        "HU": "10YHU-MAVIR----U",
+        "RS": "10YCS-SERBIATSOV",
+        "MD": "10Y1001A1001A990",
+        "UA": "10Y1001C--00003F"
+      },
+      "wind_processes": {
+        "day_ahead": "A01",
+        "intraday": "A40",
+        "current": "A18"
+      },
+      "balancing_processes": {
+        "aFRR": "A51",
+        "mFRR": "A47",
+        "RR": "A46",
+        "mFRR_scheduled": "A60",
+        "mFRR_direct": "A61",
+        "aFRR_central": "A67",
+        "aFRR_local": "A68"
+      },
+      "profiles": [
+        "load_actual",
+        "load_day_ahead",
+        "installed_capacity",
+        "generation_day_ahead",
+        "wind_solar_forecast_day_ahead",
+        "wind_solar_forecast_intraday",
+        "wind_solar_forecast_current",
+        "generation_actual",
+        "reservoirs",
+        "commercial_exchanges_BG_export_A01",
+        "commercial_exchanges_BG_export_A05",
+        "commercial_exchanges_BG_import_A01",
+        "commercial_exchanges_BG_import_A05",
+        "commercial_exchanges_HU_export_A01",
+        "commercial_exchanges_HU_export_A05",
+        "commercial_exchanges_HU_import_A01",
+        "commercial_exchanges_HU_import_A05",
+        "commercial_exchanges_RS_export_A01",
+        "commercial_exchanges_RS_export_A05",
+        "commercial_exchanges_RS_import_A01",
+        "commercial_exchanges_RS_import_A05",
+        "commercial_exchanges_MD_export_A01",
+        "commercial_exchanges_MD_export_A05",
+        "commercial_exchanges_MD_import_A01",
+        "commercial_exchanges_MD_import_A05",
+        "commercial_exchanges_UA_export_A01",
+        "commercial_exchanges_UA_export_A05",
+        "commercial_exchanges_UA_import_A01",
+        "commercial_exchanges_UA_import_A05",
+        "physical_flows_BG_export",
+        "physical_flows_BG_import",
+        "physical_flows_HU_export",
+        "physical_flows_HU_import",
+        "physical_flows_RS_export",
+        "physical_flows_RS_import",
+        "physical_flows_MD_export",
+        "physical_flows_MD_import",
+        "physical_flows_UA_export",
+        "physical_flows_UA_import",
+        "outages_production_A05",
+        "outages_production_A09",
+        "outages_production_A13",
+        "outages_generation_A05",
+        "outages_generation_A09",
+        "outages_generation_A13",
+        "imbalance_prices",
+        "imbalance_volumes",
+        "balancing_bids_aFRR",
+        "balancing_bids_mFRR",
+        "balancing_bids_RR",
+        "balancing_bids_mFRR_scheduled",
+        "balancing_bids_mFRR_direct",
+        "balancing_bids_aFRR_central",
+        "balancing_bids_aFRR_local"
+      ]
+    },
+    "damas": {
+      "project": "SEN",
+      "reports": [
+        "marginalPricesOverview",
+        "finalUnintentionalDeviations",
+        "estimatedImbalancePrices",
+        "estimatedPowerSystemImbalance",
+        "dailyConsumptionOverview",
+        "activatedBalancingEnergyOverview",
+        "scheduledExchanges"
+      ]
+    },
+    "sen_live": {
+      "project": "SEN",
+      "dataset": "11 operational MW series; UTC timestamps"
+    },
+    "open_meteo": {
+      "project": "SEN",
+      "models": [
+        "era5",
+        "ecmwf_ifs"
+      ],
+      "cities": 61,
+      "population_2021": 7094441,
+      "hourly_source": "ERA5 only when all cities complete, otherwise complete IFS",
+      "rounding": "final weighted mean to nearest integer, ties to even",
+      "quarter_hour": "repeat hourly value four times, without interpolation"
+    },
+    "bnr": {
+      "project": "SEN",
+      "purpose": "EUR/RON conversion using official date rate, forward-filled across weekends",
+      "endpoint": "https://curs.bnr.ro/files/xml/years/nbrfxrates{year}.xml"
+    }
+  }
+}

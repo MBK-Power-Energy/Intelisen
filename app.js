@@ -1,7 +1,10 @@
+import {loadDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js';
+import {nordpool} from './web/api.js';
+import {localParts,addDays} from './web/time.js';
+import {setupExplorer} from './web/source-explorer.js';
 'use strict';
 const $=id=>document.getElementById(id), S={ph:1}, STATUS='Echilibrare Status', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
 const CONFIG={responsive:true,displaylogo:false}, nf=v=>v==null?'':Number(v).toFixed(1), num=v=>v===''||v==null?null:Number(v), dayfmt=d=>d.split('-').reverse().join('.');
-function csvParse(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){let c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(c===','&&!quoted){row.push(cell);cell='';}else if(c==='\n'&&!quoted){row.push(cell.replace(/\r$/,''));if(row.some(x=>x!==''))rows.push(row);row=[];cell='';}else cell+=c;}if(cell||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}const header=rows.shift();return rows.map(r=>Object.fromEntries(header.map((h,i)=>[h,r[i]??''])));}
 function selected(id){return [...$(id).selectedOptions].map(o=>o.value);}
 function indicators(){return [...selected('markets'),...selected('sen')];}
 function dates(){return S.dates.filter(d=>d>=$('from').value&&d<=$('to').value);}
@@ -10,7 +13,7 @@ function level(d,ph,k){return S.levels.get(d+'|'+ph)?.[k]??null;}
 function value(d,ph,k){const cur=level(d,ph,k),old=level(prior(d),ph,k);if(k===STATUS||$('mode').value==='value')return cur;if(cur==null||old==null)return null;return $('mode').value==='delta'?cur-old:old===0?null:100*(cur-old)/Math.abs(old);}
 function status(v){return v==null?'':v>0?'Deficit':v<0?'Excedent':'Echilibrat';}
 function fillSelect(id,keys,defaults){$(id).replaceChildren(...keys.map(k=>{let o=document.createElement('option');o.textContent=k;o.value=k;o.selected=defaults.includes(k);return o;}));}
-function layout(title,height=480){return {title:{text:title,x:0,xanchor:'left',y:.98,font:{size:18}},height,margin:{t:70,b:125,l:105,r:105},paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'system-ui',color:'#172033'},legend:{orientation:'h',y:-.22,yanchor:'top',x:0,xanchor:'left',font:{size:12}},autosize:true,hovermode:'x unified'};}
+function layout(title,height=480){return {title:{text:title,x:0,xanchor:'left',y:.98,font:{size:18}},height,margin:{t:70,b:125,l:105,r:105},paper_bgcolor:document.documentElement.dataset.theme==='dark'?'#131f28':'#fff',plot_bgcolor:document.documentElement.dataset.theme==='dark'?'#131f28':'#fff',font:{family:'system-ui',color:document.documentElement.dataset.theme==='dark'?'#e9f1f3':'#172033'},legend:{orientation:'h',y:-.22,yanchor:'top',x:0,xanchor:'left',font:{size:12}},autosize:true,hovermode:'x unified'};}
 function render(){if(!S.data)return;const ds=dates(),ks=indicators();$('interactive').hidden=!$('plot').checked;$('manual-label').hidden=$('axis').value!=='Doua axe (manual)';if(!ds.length||!ks.length){$('loading').textContent='Selecteaza o perioada valida si cel putin un indicator.';return;}$('loading').textContent='';
  const z=ds.map(d=>ks.map(k=>k===STATUS?null:value(d,S.ph,k))),text=ds.map(d=>ks.map(k=>k===STATUS?'':nf(value(d,S.ph,k)))),hover=ds.map(d=>ks.map(k=>`${dayfmt(d)} · ${k}<br>Anterior: ${nf(level(prior(d),S.ph,k))}<br>Curent: ${nf(level(d,S.ph,k))}`));
  const tr=[{type:'heatmap',x:ks.map((_,i)=>i),y:ds.map(dayfmt),z,text,texttemplate:'%{text}',customdata:hover,hovertemplate:'%{customdata}<br>Afisat: %{z:.2f}<extra></extra>',colorscale:'RdBu',reversescale:true,zmid:$('mode').value==='value'?undefined:0,colorbar:{title:{text:$('mode').value==='pct'?'%':'Valoare'}}}];if($('mode').value==='pct'){tr[0].zmin=-Number($('limit').value);tr[0].zmax=Number($('limit').value);}if(ks.includes(STATUS)){tr.push({type:'heatmap',x:[ks.indexOf(STATUS)],y:ds.map(dayfmt),z:ds.map(d=>[level(d,S.ph,STATUS)]),text:ds.map(d=>[status(level(d,S.ph,STATUS))]),texttemplate:'%{text}',hovertemplate:'%{y}<br>%{text}<extra></extra>',zmin:-1,zmax:1,colorscale:[[0,'#81c784'],[.5,'#eee'],[1,'#ef9a9a']],showscale:false});}
@@ -40,29 +43,42 @@ function download(name,text,type){const url=URL.createObjectURL(new Blob([text],
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"';}
 function exportCsv(){const rows=[['Data','PH','Indicator','Anterior','Curent','Afisat','Mod','Reper']];for(const d of dates())for(let ph=1;ph<=24;ph++)for(const k of indicators())rows.push([d,ph,k,level(prior(d),ph,k),level(d,ph,k),value(d,ph,k),$('mode').value,$('baseline').value]);download('intelisen_'+$('from').value+'_'+$('to').value+'.csv','\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv');}
 async function exportHtml(){let plotly=document.getElementById('plotly-bundle')?.textContent;if(!plotly){const response=await fetch('vendor/plotly.min.js');if(!response.ok)throw Error('Nu pot incarca biblioteca pentru export');plotly=await response.text();}const charts=[...document.querySelectorAll('.js-plotly-plot')].filter(el=>!el.closest('[hidden]'));let body='<h1>Intelisen · Dashboard</h1><p>PH '+S.ph+' · '+$('mode').selectedOptions[0].text+' · CET/CEST</p>';charts.forEach((c,i)=>{body+=`<div id="export${i}"></div><script>Plotly.newPlot('export${i}',${JSON.stringify(c.data).replaceAll('<','\\u003c')},${JSON.stringify(c.layout).replaceAll('<','\\u003c')},{responsive:true});<\/script>`;});download('intelisen_dashboard.html','<!doctype html><html><head><meta charset="utf-8"><title>Intelisen</title><script>'+plotly.replaceAll('</script>','<\\/script>')+'<\/script></head><body>'+body+'</body></html>','text/html');}
-async function init(){try{const files=['levels.csv','contracts.csv','trades.csv','Opcom_IDA/ida_coupling.csv'];const data=await Promise.all(files.map(async f=>{if(window.INTELISEN_CSV?.[f]!=null)return csvParse(window.INTELISEN_CSV[f]);const r=await fetch('data/'+f,{cache:'no-store'});if(!r.ok)throw Error('CSV indisponibil: '+f);return csvParse(await r.text());}));S.snapshot=window.INTELISEN_SNAPSHOT||await (await fetch('data/snapshot.json',{cache:'no-store'})).json();S.dates=[...new Set(data[0].map(r=>r.Data))].filter(d=>d>=S.snapshot.period_start&&d<=S.snapshot.period_end).sort();for(const id of ['from','to']){$(id).min=S.dates[0];$(id).max=S.dates.at(-1);}const now=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());const anchor=new Date(now+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-((anchor.getUTCDay()+6)%7));const monday=anchor.toISOString().slice(0,10);let visible=S.dates.filter(d=>d>=monday&&d<=now);if(!visible.length)visible=S.dates.slice(-7);$('from').value=visible[0];$('to').value=visible.at(-1);$('period-label').textContent=dayfmt(S.dates[0])+' – '+dayfmt(S.dates.at(-1));S.data=data;S.levels=new Map(data[0].map(r=>[r.Data+'|'+r.PH,Object.fromEntries(Object.entries(r).map(([k,v])=>[k,k==='Data'?v:num(v)]))]));S.contracts=data[1].map(c=>({...c,ph:Number(c.start_local.slice(11,13))+1}));S.trades=data[2];S.ida=data[3];const keys=Object.keys(data[0][0]).slice(2),markets=keys.slice(0,15),sen=keys.slice(15);fillSelect('markets',markets,['PZU pret','ID VWAP','ID volum buy','ID volum sell']);fillSelect('sen',sen,['Eroare consum','Eroare solar DA','Eroare eolian DA',STATUS]);
- for(let ph=1;ph<=24;ph++){let b=document.createElement('button');b.textContent='PH-'+String(ph).padStart(2,'0');b.classList.toggle('active',ph===1);b.onclick=()=>{S.ph=ph;[...$('tabs').children].forEach(x=>x.classList.toggle('active',x===b));render();};$('tabs').append(b);}document.querySelectorAll('input,select').forEach(e=>e.addEventListener('change',render));$('csv').onclick=exportCsv;$('html').onclick=()=>exportHtml().catch(error=>alert(error.message));$('snapshot').textContent=`${S.contracts.length} contracte · ${S.trades.length.toLocaleString('ro-RO')} tranzactii · Actualizat: ${new Date(S.snapshot.created_at_utc).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest'})} · Datele zilei curente sunt partiale`;render();}catch(e){$('loading').className='error';$('loading').textContent=e.message+' · Porneste printr-un server HTTP local sau GitHub Pages; nu prin file://.';}}
-init();
-
-// Published CSV snapshots are checked periodically; credentials never reach the browser.
-let refreshBusy=false;
-async function refreshPublished(){
- if(location.protocol==='file:'||!S.data||refreshBusy)return;
- refreshBusy=true;
+let loading=false,pending=false,tradeSelection='';
+function clearPrivate(){S.contracts=[];S.trades=[];S.npAccess=false;tradeSelection='';for(const row of S.levels?.values()||[])for(const key of ['ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell'])row[key]=null;}
+async function refreshOnline(){
+ if(loading){pending=true;return;}loading=true;
  try{
-  const response=await fetch('data/snapshot.json',{cache:'no-store'});if(!response.ok)return;
-  const snapshot=await response.json();if(snapshot.created_at_utc===S.snapshot.created_at_utc)return;
-  const files=['levels.csv','contracts.csv','trades.csv','Opcom_IDA/ida_coupling.csv'];
-  const data=await Promise.all(files.map(async f=>{const r=await fetch('data/'+f,{cache:'no-store'});if(!r.ok)throw Error('Snapshot incomplet');return csvParse(await r.text());}));
-  if(!data[0].length||!data[1].length||!data[2].length)throw Error('Snapshot gol');
-  S.data=data;S.snapshot=snapshot;S.levels=new Map(data[0].map(r=>[r.Data+'|'+r.PH,Object.fromEntries(Object.entries(r).map(([k,v])=>[k,k==='Data'?v:num(v)]))]));
-  S.contracts=data[1].map(c=>({...c,ph:Number(c.start_local.slice(11,13))+1}));S.trades=data[2];S.ida=data[3];
-  S.dates=[...new Set(data[0].map(r=>r.Data))].filter(d=>d>=snapshot.period_start&&d<=snapshot.period_end).sort();
-  for(const id of ['from','to']){$(id).min=S.dates[0];$(id).max=S.dates.at(-1);}
-  $('period-label').textContent=dayfmt(S.dates[0])+' – '+dayfmt(S.dates.at(-1));
-  $('snapshot').textContent=`${S.contracts.length} contracte · ${S.trades.length.toLocaleString('ro-RO')} tranzactii · Actualizat: ${new Date(snapshot.created_at_utc).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest'})} · Azi partial`;
-  render();
- }catch(error){$('loading').textContent='Actualizarea paginii nu a reusit; ultimele date valide sunt pastrate.';}
- finally{refreshBusy=false;}
+  const from=$('from').value,to=$('to').value;
+  const dashboard=await loadDashboard(from,to);
+  if(from!==$('from').value||to!==$('to').value){pending=true;return;}
+  S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
+  S.snapshot={created_at_utc:dashboard.collectedAt,period_start:from,period_end:to};
+  $('period-label').textContent=dayfmt(from)+' – '+dayfmt(to);
+  $('snapshot').textContent='Supabase · pagina verificată la '+new Date(dashboard.collectedAt).toLocaleTimeString('ro-RO')+' · '+dashboard.coverage.opcom+' tabele OPCOM · '+dashboard.coverage.entsoe+' documente ENTSO-E · '+dashboard.coverage.damas+' intervale DAMAS · '+dashboard.coverage.weather+' ore meteo complete. Istoric din 1 octombrie, în curs de import.';
+  $('loginHint').textContent=dashboard.npAccess?'Nord Pool: acces autorizat · tranzacțiile au aproximativ 20 min întârziere la publicare.':'Autentifică-te cu Login pentru indicatorii și graficele Nord Pool.';
+  $('loading').className='';$('loading').textContent='';await refreshSelectedTrades();render();
+ }catch(error){$('loading').className='error';$('loading').textContent='Citirea online a eșuat: '+error.message+'. Ultimele date valide sunt păstrate.';}
+ finally{loading=false;if(pending){pending=false;refreshOnline();}}
 }
-setInterval(refreshPublished,60000);
+async function refreshSelectedTrades(){
+ if(!S.npAccess||!$('showtrades').checked||$('scope').value==='PH sumar'){S.trades=[];return;}
+ const selection=dates().join(',')+'|'+S.ph,ticket=selection;tradeSelection=ticket;
+ try{const trades=await loadTrades(S.contracts,dates(),S.ph);if(ticket===tradeSelection&&S.npAccess)S.trades=trades;}
+ catch(error){$('loginHint').textContent='Tranzacțiile nu au putut fi actualizate: '+error.message;}
+}
+async function init(){
+ const today=localParts(Date.now()).day,anchor=new Date(today+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-((anchor.getUTCDay()+6)%7));
+ $('from').value=[anchor.toISOString().slice(0,10),'2026-10-01'].sort().at(-1);$('to').value=today;
+ for(const id of ['from','to']){$(id).min='2026-10-01';$(id).max=addDays(today,1);$(id).addEventListener('change',refreshOnline);}
+ fillSelect('markets',MARKETS,['PZU pret','IDA1 pret','ID VWAP']);fillSelect('sen',FUNDAMENTALS,['Consum Actual','Solar Actual','Eolian Actual','Temperatura']);
+ S.trades=[];S.contracts=[];S.ida=[];
+ for(let ph=1;ph<=24;ph++){const b=document.createElement('button');b.textContent='PH-'+String(ph).padStart(2,'0');b.classList.toggle('active',ph===1);b.onclick=async()=>{S.ph=ph;[...$('tabs').children].forEach(x=>x.classList.toggle('active',x===b));S.trades=[];render();await refreshSelectedTrades();render();};$('tabs').append(b);}
+ document.querySelectorAll('input,select').forEach(e=>{if(!['from','to'].includes(e.id))e.addEventListener('change',async()=>{render();if(['showtrades','scope'].includes(e.id)){await refreshSelectedTrades();render();}})});
+ $('csv').onclick=exportCsv;$('html').onclick=()=>exportHtml().catch(error=>alert(error.message));
+ window.addEventListener('intelisen-theme-change',render);
+ nordpool.auth.onAuthStateChange((event,session)=>{if(!session){clearPrivate();render();}else setTimeout(refreshOnline,0);});
+ await refreshOnline();await setupExplorer();
+}
+init().catch(error=>{$('loading').textContent=error.message;});
+setInterval(()=>{if(!document.hidden)refreshOnline()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshOnline()});

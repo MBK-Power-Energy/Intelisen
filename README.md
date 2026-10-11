@@ -1,30 +1,27 @@
-# Intelisen · date actualizate
+# Intelisen
 
-Aplicatie JavaScript statica pentru GitHub Pages, cu date locale CSV. Perioada selectabila; implicit saptamana curenta cu date disponibile. Ora snapshotului este afisata in sidebar. Ziua curenta este partiala. Snapshotul contine perioada incepand cu 1 octombrie 2026 si pana la ziua curenta + 1; baseline 7 zile anterior disponibil pentru comparatii.
+Aplicație statică pe GitHub Pages, cu date citite din Supabase. Tema implicită este albă; butonul Light/Dark salvează preferința în browser. Login deschide secțiunea Nord Pool, protejată prin Supabase Auth și RLS. Pagina verifică automat datele la 60 de secunde și la revenirea în tab.
 
-## Publicare GitHub Pages
-Settings → Pages → Deploy from a branch → main → / (root) → Save.
+## Date și execuție online
 
-## Actualizare
-Pe calculatorul sursa, updaterii Nord Pool, OPCOM PZU/IDA si DAMAS/ENTSO-E apeleaza scriptul local `intelisen/sync_github.py --push` dupa succes. Exportul este validat si trimis prin Git numai daca exista modificari. Nu include credentiale. Calculatorul trebuie sa fie pornit, conectat si autentificat pentru GitHub. Modificarile locale necomise in repository opresc sincronizarea pentru a nu publica editari neaprobate. Esuarea sincronizarii nu anuleaza extragerea de date; se raporteaza separat.
+Nordpool (`qumxkyavlavixzaevipw`): contracte TEL, statistici Total și tranzacții. SEN (`squtjqwjnwlnqlvfzlzg`): DAMAS, SEN, OPCOM PZU/IDA, ENTSO-E, Open-Meteo și curs BNR. Volue este exclus. Colectoarele rulează prin Supabase Cron; ENTSO-E folosește o Edge Function care acceptă inclusiv răspunsuri ZIP. Calculatorul local nu este necesar pentru colectare.
 
-CSV-urile sunt citite la incarcarea paginii. Reincarca pagina pentru ultimul snapshot. index.html include si snapshot de rezerva pentru deschidere locala prin file://; pe GitHub Pages citeste CSV-urile publicate. Plotly/CSS/JS sunt incluse in HTML. Export HTML este offline; CSV exporta toti PH pentru indicatorii selectati.
+Istoricul începe la 1 octombrie 2026. Importurile rulează în cozi în cloud; lipsurile sunt afișate ca lipsuri, fără valori fabricate. Datele și reviziile originale sunt păstrate. Exploratorul surselor oferă grafice și export JSON. Scripturile din `collectors/` sunt adaptoare de referință; nu reprezintă execuția online.
 
-PH trades: toate tranzactiile pe zi de livrare, fara filtrare de suprapuneri. PH sumar: OHLC oficial Nord Pool, PH01–24. IDA min/max necesita 4 sferturi. Lipsa nu este zero. Explicatii si unitati: sidebar. Tranzactiile simultane pot avea O/C diferit dupa ordonarea exportului. Licenta Plotly.js MIT: vendor/LICENSE-plotly.txt.
+Credențialele furnizorilor sunt numai în Vault. Cheile publishable din pagină sunt publice; accesul privat Nord Pool este limitat de `nordpool_private.allowed_emails`. Fișierele statice Nord Pool au fost eliminate din pagina publică. Autentificarea nu acordă automat acces unui cont neautorizat.
 
-## Demo live DAMAS + SEN
+## Configurare
 
-Disponibil la https://amariahendre.github.io/Intelisen/demo-live/. Interfata statica citeste direct din Supabase; nu necesita republicare pentru fiecare actualizare de date.
+În proiectul SEN, se aplică în ordine: `demo-live/setup.sql`, `supabase/damas-reports.sql`, `supabase/opcom.sql`, `supabase/weather.sql`, `supabase/bnr.sql`, `supabase/sen-history.sql`, `supabase/entsoe-documents.sql`, `supabase/entsoe-worker.sql`. Se configurează secretul `entsoe_token` în Vault, se publică `supabase/functions/entsoe-collector/index.ts`, apoi se aplică `supabase/entsoe-worker-cron.sql`. Secretul intern al workerului este creat de SQL. Funcția verifică acest secret pe lângă autentificarea gatewayului.
 
-Supabase Cron executa `sync_damas` si `sync_sen` in fiecare minut, inclusiv cand calculatorul este oprit. DAMAS reciteste ziua curenta si precedenta; SEN reciteste ultimele 24 de ore. Raspunsurile schimbate sunt arhivate ca revizii. Erorile sunt inregistrate fara inlocuirea partiala a observatiilor valide.
+În proiectul Nordpool: `supabase/nordpool.sql`, `supabase/nordpool-total.sql`, `supabase/nordpool-history.sql`. Vault: `np_username`, `np_password`, opțional `np_subscription_key`. Lista de emailuri autorizate se gestionează administrativ, separat de codul public.
 
-Scriptul `demo-live/setup.sql` reproduce tabelele, colectoarele si programarea. Numai datele publice si starea colectarii sunt citibile prin API; functiile de colectare sunt rezervate administratorului. Cheia publishable din interfata este publica si nu acorda drepturi administrative.
+GitHub Pages: Settings → Pages → main → / (root). Publicarea codului este distinctă de colectarea datelor. Tema și Login sunt disponibile în dashboard, demo SEN și pagina Nord Pool.
 
-DAMAS pastreaza semnele si raspunsul brut; NaN/N/A sunt afisate ca lipsuri. Unitatea dezechilibrului ramane neconfirmata. SEN este in MW, cu ore Bucuresti convertite in UTC; orele locale ambigue sunt izolate. Interfata distinge prospetimea colectarii de prospetimea observatiei SEN. Acest endpoint SEN a returnat puncte la aproximativ 10 minute; colectarea la un minut nu produce observatii pe care sursa nu le publica.
+## Interpretare
 
+PH și comparațiile folosesc CET/CEST. Datele surselor păstrează timestampurile originale UTC. Orele repetate la schimbarea orei rămân în datele brute și sunt excluse din comparațiile PH. O medie orară cere patru sferturi complete.
 
-Nord Pool privat: `demo-live/nordpool/` oferă Overview OHLC/VWAP și Trades per contract, cu lumânări, EMA20, VWAP cumulat și volum MW. Supabase Auth + RLS limitează accesul la lista din `nordpool_private.allowed_emails`; nu există instantanee Nord Pool publice. Migrarea: `supabase/nordpool.sql`. Credențialele sunt doar în Supabase Vault (`np_username`, `np_password`, opțional `np_subscription_key`). Cron colectează la 5 minute, statisticile sunt recitite la 15 minute; API v2 are ~20 minute întârziere pentru tranzacții. Fereastra de tranzacții recente este recitită cu suprapunere de 2 ore, plus reconciliere rotativă a livrărilor de ieri și azi. Datele mai vechi necesită backfill. Prețurile sunt EUR/MWh; volumele API sunt MW, fără conversie implicită la MWh.
+PZU brut este RON/MWh; comparația PZU în EUR/MWh folosește cursul BNR. Volumele PZU se convertesc din MW în MWh prin durata intervalului. Volumele tranzacțiilor Nord Pool rămân MW, fără marcaj buy/sell inventat. Valorile DAMAS cu unitate neconfirmată rămân brute. API Nord Pool publică tranzacțiile cu întârzierea furnizorului; colectarea frecventă nu elimină această întârziere.
 
-## Proiecte Supabase
-
-Nordpool (`qumxkyavlavixzaevipw`): Contracts, Trades și autentificare Nord Pool. SEN (`squtjqwjnwlnqlvfzlzg`): DAMAS și observații SEN; destinație pentru OPCOM și ENTSO-E în migrarea aplicației. Volue este exclus. Demo DAMAS/SEN folosește proiectul SEN; configurația locală a conexiunii este versionată pentru migrare.
+Plotly: `vendor/LICENSE-plotly.txt`. Graficele Nord Pool folosesc TradingView Lightweight Charts.
