@@ -68,9 +68,10 @@ async function refreshSelectedTrades(){
 }
 async function init(){
  const today=localParts(Date.now()).day,anchor=new Date(today+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-((anchor.getUTCDay()+6)%7));
- $('from').value=[anchor.toISOString().slice(0,10),'2026-10-01'].sort().at(-1);$('to').value=today;
- for(const id of ['from','to']){$(id).min='2026-10-01';$(id).max=addDays(today,1);$(id).addEventListener('change',refreshOnline);}
- fillSelect('markets',MARKETS,['PZU pret','IDA1 pret','ID VWAP']);fillSelect('sen',FUNDAMENTALS,['Consum Actual','Solar Actual','Eolian Actual','Temperatura']);
+ $('from').value=[anchor.toISOString().slice(0,10),'2026-10-01'].sort().at(-1);$('to').value=addDays(anchor.toISOString().slice(0,10),6);
+ for(const id of ['from','to']){$(id).min='2026-10-01';$(id).max=[addDays(today,1),$('to').value].sort().at(-1);$(id).addEventListener('change',refreshOnline);}
+ fillSelect('markets',MARKETS,['PZU pret']);fillSelect('sen',FUNDAMENTALS,['Temperatura','Consum DA','Solar DA','Eolian DA','Import DA','Export DA']);
+ $('mode').value='value';$('baseline').value='calendar';
  S.trades=[];S.contracts=[];S.ida=[];
  for(let ph=1;ph<=24;ph++){const b=document.createElement('button');b.textContent='PH-'+String(ph).padStart(2,'0');b.classList.toggle('active',ph===1);b.onclick=async()=>{S.ph=ph;[...$('tabs').children].forEach(x=>x.classList.toggle('active',x===b));S.trades=[];render();await refreshSelectedTrades();render();};$('tabs').append(b);}
  document.querySelectorAll('input,select').forEach(e=>{if(!['from','to'].includes(e.id))e.addEventListener('change',async()=>{render();if(['showtrades','scope'].includes(e.id)){await refreshSelectedTrades();render();}})});
