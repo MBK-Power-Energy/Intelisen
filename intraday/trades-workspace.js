@@ -1,0 +1,42 @@
+const KEY='intelisen-trades-workspace-v1';
+const layouts={'1':1,'2':2,'4':4,'6-wide':6,'6-tall':6,'8':8,'16':16},resolutions=[1,5,15,30,60];
+const bounded=(v,fallback,max)=>Math.max(1,Math.min(max,Math.round(Number(v)||fallback)));
+export function normalizeWorkspace(value={}){
+ if(!value||typeof value!=='object')value={};
+ const requested=String(value.layout)==='6'?'6-wide':String(value.layout);const layout=Object.hasOwn(layouts,requested)?requested:'1';
+ return {layout,sync:value.sync===true,active:Math.min(bounded(Number(value.active)+1,1,16)-1,layouts[layout]-1),panes:Array.from({length:16},(_,i)=>{const p=value.panes?.[i]||{},duration=[15,30,60].includes(Number(p.duration))?Number(p.duration):60;return {duration,contract:bounded(p.contract,i+1,1440/duration),resolution:resolutions.includes(Number(p.resolution))?Number(p.resolution):1,ema1:bounded(p.ema1,13,500),ema2:bounded(p.ema2,26,500),showPzu:p.showPzu!==false,showIda1:p.showIda1!==false,showIda2:p.showIda2!==false,showIda3:p.showIda3!==false,showVwap:p.showVwap!==false,showVolume:p.showVolume!==false};})};
+}
+export class TradesWorkspace{
+ constructor(root,onChange,onActive){this.root=root;this.onChange=onChange;this.onActive=onActive;let saved;try{saved=JSON.parse(localStorage.getItem(KEY)||'{}');}catch{}this.state=normalizeWorkspace(saved);this.mount();}
+ save(){try{localStorage.setItem(KEY,JSON.stringify(this.state));}catch{}}
+ mount(){
+  this.root.replaceChildren();this.root.dataset.layout=String(this.state.layout);document.body.classList.toggle('multi-trades',this.state.layout!=='1');
+  this.nodes=this.state.panes.slice(0,layouts[this.state.layout]).map((settings,i)=>{
+   const pane=document.createElement('section');pane.className='section trade-pane';pane.setAttribute('aria-label','Grafic '+(i+1));
+   pane.innerHTML=`<div class="pane-heading"><h2>Grafic ${i+1}</h2><button type="button" data-control="activate" aria-pressed="false">Vezi tabelul</button></div><div class="toolbar pane-controls"><label>Produs<select data-control="duration"><option value="60">PH</option><option value="30">HH</option><option value="15">QH</option></select></label><label>Contract<select data-control="contract"></select></label><label>Lumânare<select data-control="resolution"><option value="1">1 min</option><option value="5">5 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label><label>EMA 1<input data-control="ema1" type="number" min="1" max="500"></label><label>EMA 2<input data-control="ema2" type="number" min="1" max="500"></label></div><div class="reference-toggles">${[['showPzu','PZU'],['showIda1','IDA1'],['showIda2','IDA2'],['showIda3','IDA3'],['showVwap','VWAP'],['showVolume','Volum']].map(([id,label])=>`<label><input type="checkbox" data-control="${id}">${label}</label>`).join('')}</div><h3 data-control="chartTitle"></h3><p data-control="cursor"></p><div class="legend" data-control="legend"></div><div class="pane-price-chart" data-control="priceChart"></div><div class="pane-volume-chart" data-control="volumeChart"></div>`;
+   const read=id=>pane.querySelector('[data-control="'+id+'"]');
+   const fillContracts=()=>{const prefix={60:'PH',30:'HH',15:'QH'}[settings.duration];read('contract').replaceChildren(...Array.from({length:1440/settings.duration},(_,n)=>{const o=document.createElement('option');o.value=n+1;o.textContent=prefix+'-'+String(n+1).padStart(2,'0');return o;}));read('contract').value=settings.contract;};
+   for(const [key,value]of Object.entries(settings)){const control=read(key);if(key==='contract')continue;if(control.type==='checkbox')control.checked=value;else control.value=value;}
+   fillContracts();
+   let editTimer;
+   const update=(e,typing=false)=>{const key=e.target.dataset.control;if(!key||!(key in settings)||(typing&&e.target.value===''))return;settings[key]=e.target.type==='checkbox'?e.target.checked:Number(e.target.value);this.state.panes[i]=settings;Object.assign(settings,normalizeWorkspace({panes:this.state.panes}).panes[i]);if(key==='duration')fillContracts();if(!typing&&e.target.type!=='checkbox')e.target.value=settings[key];this.save();clearTimeout(editTimer);if(typing)editTimer=setTimeout(()=>this.onChange(),250);else this.onChange();};
+   pane.addEventListener('change',e=>update(e));
+   pane.addEventListener('input',e=>{if(e.target.type==='number')update(e,true);});
+   read('activate').onclick=()=>{this.state.active=i;this.save();this.markActive();this.onActive(i);};
+   this.root.append(pane);return pane;
+  });this.markActive();
+ }
+ markActive(){this.nodes.forEach((pane,i)=>{pane.classList.toggle('active-pane',i===this.state.active);pane.querySelector('[data-control="activate"]').setAttribute('aria-pressed',String(i===this.state.active));});}
+ setLayout(layout){if(!Object.hasOwn(layouts,String(layout)))return;this.state.layout=String(layout);this.state.active=Math.min(this.state.active,layouts[this.state.layout]-1);this.save();this.mount();this.onChange();}
+ setSync(enabled){this.state.sync=enabled;this.save();}
+ get settings(){return this.state.panes.slice(0,layouts[this.state.layout]);}
+}
+export function synchronizeCharts(runtimes,enabled){
+ let syncing=false;
+ const pointsByChart=new Map(runtimes.map(runtime=>[runtime,[...new Map((runtime.data.details||[]).flatMap(d=>d.candles).map(p=>[p.time,p])).values()].sort((a,b)=>a.time-b.time)]));
+ const candleAt=(runtime,time)=>{const points=pointsByChart.get(runtime);if(!points.length||time<points[0].time||time>points.at(-1).time)return null;let lo=0,hi=points.length-1;while(lo<hi){const mid=Math.floor((lo+hi)/2);if(points[mid].time<time)lo=mid+1;else hi=mid;}const next=points[lo],prev=points[Math.max(0,lo-1)];return Math.abs(prev.time-time)<=Math.abs(next.time-time)?prev:next;};
+ for(const source of runtimes){
+  source.price.timeScale().subscribeVisibleTimeRangeChange(range=>{if(!range||syncing||!enabled())return;syncing=true;try{for(const target of runtimes)if(target!==source&&target.data.candles.length)target.price.timeScale().setVisibleRange(range);}finally{syncing=false;}});
+  source.price.subscribeCrosshairMove(event=>{if(syncing||!enabled())return;syncing=true;try{for(const target of runtimes)if(target!==source){const candle=event.time?candleAt(target,Number(event.time)):null;if(candle){target.price.setCrosshairPosition(candle.close,candle.time,target.candles);target.describe(candle.time);}else{target.price.clearCrosshairPosition();if(target.latest)target.describe(target.latest.time);}}}finally{syncing=false;}});
+ }
+}
