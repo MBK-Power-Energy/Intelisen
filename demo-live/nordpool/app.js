@@ -8,7 +8,14 @@ async function allRows(table,filters){let rows=[];for(let start=0;;start+=1000){
 function clearPrivate(){generation++;contracts=[];lastBars=null;for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';$('contract').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=false;}
 async function auth(next){session=next;if(!session){clearPrivate();message('Autentifică-te pentru a vedea datele Nord Pool.');return;}
  const {data,error}=await client.rpc('nordpool_authorized');if(error||data!==true){clearPrivate();message('Acest cont nu are acces la Nord Pool.');return;}$('login').hidden=true;$('private').hidden=false;$('loginShortcut').hidden=true;await load();}
-$('loginForm').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{const {error}=await client.auth.signInWithOtp({email:$('email').value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;message('Verifică emailul și deschide linkul de autentificare.');}catch(e){message(e.message);}finally{button.disabled=false;}};
+$('loginForm').onsubmit=async e=>{
+ e.preventDefault();const button=e.target.querySelector('button'),feedback=$('loginFeedback');
+ const show=(text,state)=>{feedback.hidden=false;feedback.textContent=text;feedback.dataset.state=state;};
+ button.disabled=true;show('Se trimite linkul de autentificare…','pending');
+ try{const {error}=await client.auth.signInWithOtp({email:$('email').value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;show('Cererea a fost trimisă. Dacă adresa este autorizată, vei primi un link de autentificare. Verifică Inbox și Spam și deschide linkul în același browser.','success');}
+ catch(error){show('Linkul nu a putut fi trimis. '+error.message,'error');}
+ finally{button.disabled=false;}
+};
 $('logout').onclick=async()=>{clearPrivate();await client.auth.signOut();session=null;message('Sesiune închisă.');};
 async function load(){if(!session)return;if(busy){generation++;return;}busy=true;const ticket=++generation;const selected=$('contract').value;
  try{if($('from').value>$('to').value)throw Error('Data de început trebuie să fie înaintea datei de sfârșit.');
