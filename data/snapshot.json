@@ -1,10 +1,10 @@
 {
   "period_start": "2026-10-01",
   "period_end": "2026-10-12",
-  "created_at_utc": "2026-10-11T06:00:12.447870+00:00",
+  "created_at_utc": "2026-10-11T06:52:36.163998+00:00",
   "market_timezone": "Europe/Brussels",
   "contracts": 288,
-  "trades": 73144,
+  "trades": 73650,
   "ida_rows": 1392,
   "today_partial": true,
   "baseline_start": "2026-09-24"
