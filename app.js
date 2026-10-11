@@ -3,7 +3,6 @@ import {setupSenOverview} from './web/sen-overview.js';
 import {loadDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js';
 import {nordpool} from './web/api.js';
 import {localParts,addDays} from './web/time.js';
-import {setupExplorer} from './web/source-explorer.js';
 'use strict';
 const $=id=>document.getElementById(id), S={ph:1}, STATUS='Echilibrare Status', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
 const CONFIG={responsive:true,displaylogo:false}, nf=v=>v==null?'':Number(v).toFixed(1), num=v=>v===''||v==null?null:Number(v), dayfmt=d=>d.split('-').reverse().join('.');
@@ -77,7 +76,7 @@ async function init(){
  $('csv').onclick=exportCsv;$('html').onclick=()=>exportHtml().catch(error=>alert(error.message));
  window.addEventListener('intelisen-theme-change',render);
  nordpool.auth.onAuthStateChange((event,session)=>{if(!session){clearPrivate();render();}else setTimeout(refreshOnline,0);});
- await refreshOnline();await setupExplorer();
+ await refreshOnline();
 }
 setupSenOverview();
 setupImbalanceOverview();
