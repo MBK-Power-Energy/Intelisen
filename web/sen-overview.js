@@ -5,7 +5,7 @@ export const SEN_SERIES=[
  ['consumption_mw','Consum','#ff5598'],['hourly_average_consumption_mw','Medie orară consum','#1554e8'],['production_mw','Producție','#7636d0'],['coal_mw','Cărbune','#555555'],['hydrocarbons_mw','Hidrocarburi','#e8aa00'],['hydro_mw','Ape','#00a0c6'],['nuclear_mw','Nuclear','#f43c3c'],['wind_mw','Eolian','#179b19'],['solar_mw','Foto','#a60000'],['biomass_mw','Biomasă','#a06a35'],['balance_mw','Sold','#ca4c79']
 ];
 let rows=[],busy=false,hoverBound=false;
-function showValues(row){for(const [key]of SEN_SERIES)$('senValue-'+key).textContent=fmt(row?.[key])+' MW';}
+function showValues(row){for(const [key]of SEN_SERIES)$('senValue-'+key).textContent=fmt(row?.[key])+' MW';const label=$('senCursorTime');if(label)label.textContent=row?'Ora valorilor: '+dateTime(row.observed_at)+' · ora locală':'Ora valorilor: —';}
 const fmt=v=>Number.isFinite(v)?v.toLocaleString('ro-RO',{maximumFractionDigits:1}):'—';
 const dateTime=t=>($('senFrom').value!==$('senTo').value?new Date(t).toLocaleDateString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit'})+' ':'')+time(t);
 const time=t=>new Date(t).toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour:'2-digit',minute:'2-digit'});
@@ -30,6 +30,7 @@ async function refresh(){if(busy)return;const from=$('senFrom').value,to=$('senT
  $('senOverviewStatus').textContent=from+' – '+to+' · '+(end?'ultima observație: '+new Date(end.observed_at).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest'}):'fără observații pentru intervalul selectat')+' · verificare automată la 60 secunde';draw();
  }catch(error){$('senOverviewStatus').textContent='SEN: '+error.message+(rows.length?' · sunt păstrate ultimele date citite':'');}finally{busy=false;if(from!==$('senFrom').value||to!==$('senTo').value)refresh();}}
 export function setupSenOverview(){
+ const cursorTime=document.createElement('p');cursorTime.id='senCursorTime';cursorTime.className='hint';cursorTime.setAttribute('aria-live','off');$('senOverviewChart').before(cursorTime);
  let rangeTimer;const changed=()=>{clearTimeout(rangeTimer);rangeTimer=setTimeout(refresh,200);};
  const today=localParts(Date.now(),'Europe/Bucharest').day;for(const id of ['senFrom','senTo']){$(id).value=today;$(id).max=today;$(id).addEventListener('input',changed);$(id).addEventListener('change',changed);}
 
