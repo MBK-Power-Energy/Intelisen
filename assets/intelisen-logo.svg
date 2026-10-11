@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 140" width="410" height="140" role="img" aria-label="intelisen">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12305A"/>
+      <stop offset="1" stop-color="#0A1A33"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="70" cy="70" r="50"/></clipPath>
+  </defs>
+
+  <!-- Simbol: cadran de frecvență cu undă de 50 Hz -->
+  <circle cx="70" cy="70" r="56" fill="url(#bg2)"/>
+  <circle cx="70" cy="70" r="56" fill="none" stroke="#00C2A8" stroke-width="4"
+          stroke-dasharray="250 102" stroke-linecap="round" transform="rotate(-210 70 70)"/>
+  <line x1="24" y1="70" x2="116" y2="70" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1.5"/>
+  <g clip-path="url(#disc)">
+    <path d="M20 70 C26.7 44, 33.3 44, 40 70 S53.3 96, 60 70 S73.3 44, 80 70 S93.3 96, 100 70 S113.3 44, 120 70"
+          fill="none" stroke="#3EE8FF" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <circle cx="70" cy="50.5" r="7" fill="#FFB020"/>
+
+  <!-- Wordmark -->
+  <text x="144" y="90" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="56" letter-spacing="-1.5">
+    <tspan fill="#0E2547" font-weight="400">inteli</tspan><tspan fill="#00A892" font-weight="700">sen</tspan>
+  </text>
+</svg>
