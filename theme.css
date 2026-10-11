@@ -27,3 +27,5 @@ button{border-radius:9px;transition:background-color .15s,border-color .15s,colo
 .intraday-controls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}.intraday-controls label{display:flex;flex-direction:column;gap:8px}.intraday-controls input,.intraday-controls select{box-sizing:border-box;height:46px;margin:0;padding:10px 12px}.header-actions [hidden]{display:none!important}
 
 .ema-controls{display:flex;gap:16px;align-items:flex-end}.ema-controls[hidden]{display:none}.ema-controls input{width:90px}
+
+.reference-toggles{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px}.reference-toggles label{display:flex;align-items:center;gap:8px}#chartTitle{margin:12px 0 6px}#cursor{margin:6px 0}#legend{margin-bottom:16px}
