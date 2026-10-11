@@ -24,3 +24,7 @@ DAMAS pastreaza semnele si raspunsul brut; NaN/N/A sunt afisate ca lipsuri. Unit
 
 
 Nord Pool privat: `demo-live/nordpool/` oferă Overview OHLC/VWAP și Trades per contract, cu lumânări, EMA20, VWAP cumulat și volum MW. Supabase Auth + RLS limitează accesul la lista din `nordpool_private.allowed_emails`; nu există instantanee Nord Pool publice. Migrarea: `supabase/nordpool.sql`. Credențialele sunt doar în Supabase Vault (`np_username`, `np_password`, opțional `np_subscription_key`). Cron colectează la 5 minute, statisticile sunt recitite la 15 minute; API v2 are ~20 minute întârziere pentru tranzacții. Fereastra de tranzacții recente este recitită cu suprapunere de 2 ore, plus reconciliere rotativă a livrărilor de ieri și azi. Datele mai vechi necesită backfill. Prețurile sunt EUR/MWh; volumele API sunt MW, fără conversie implicită la MWh.
+
+## Proiecte Supabase
+
+Nordpool (`qumxkyavlavixzaevipw`): Contracts, Trades și autentificare Nord Pool. SEN (`squtjqwjnwlnqlvfzlzg`): DAMAS și observații SEN; destinație pentru OPCOM și ENTSO-E în migrarea aplicației. Volue este exclus. Demo DAMAS/SEN folosește proiectul SEN; configurația locală a conexiunii este versionată pentru migrare.

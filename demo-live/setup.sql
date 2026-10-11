@@ -107,7 +107,7 @@ revoke all on function public.sync_damas(date) from public, anon, authenticated;
 grant execute on function public.sync_damas(date) to postgres;
 
 -- Initial verification of the day supplied for this demo.
-select public.sync_damas('2026-10-11'::date);
+select public.sync_damas((now() at time zone 'Europe/Bucharest')::date);
 -- Every minute, re-fetch the live day and yesterday to capture revisions.
 -- The named job is updated rather than duplicated when this setup is re-run.
 select cron.schedule('damas-imbalance-minute','* * * * *',
