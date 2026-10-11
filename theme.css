@@ -33,3 +33,6 @@ button{border-radius:9px;transition:background-color .15s,border-color .15s,colo
 .volume-toggle{display:flex;align-items:center;gap:10px}#contractVolumesChart{width:100%;min-height:300px}#contractVolumesSection[hidden],#contractVolumesChart[hidden]{display:none}
 
 #legend{display:flex;flex-wrap:wrap;gap:8px 18px}.chart-legend-item{display:inline-flex;align-items:center;gap:6px;color:var(--text)}.chart-legend-swatch{width:10px;height:10px;flex-shrink:0;border-radius:2px}
+
+#message{background:#fff4e5;color:#6b430b;border-left-color:#eea83d}
+:root[data-theme="dark"] #message{background:#2c2419;color:#ffe0ad;border-left-color:#eea83d}
