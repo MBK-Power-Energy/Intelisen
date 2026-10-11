@@ -55,8 +55,6 @@ async function refreshOnline(){
   if(from!==$('from').value||to!==$('to').value){pending=true;return;}
   S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
   S.snapshot={created_at_utc:dashboard.collectedAt,period_start:from,period_end:to};
-  $('period-label').textContent=dayfmt(from)+' – '+dayfmt(to);
-  $('snapshot').textContent='Supabase · pagina verificată la '+new Date(dashboard.collectedAt).toLocaleTimeString('ro-RO')+' · '+dashboard.coverage.opcom+' tabele OPCOM · '+dashboard.coverage.entsoe+' documente ENTSO-E · '+dashboard.coverage.damas+' intervale DAMAS · '+dashboard.coverage.weather+' ore meteo complete. Istoric din 1 octombrie, în curs de import.';
   $('loginHint').textContent=dashboard.npAccess?'Nord Pool: acces autorizat · tranzacțiile au aproximativ 20 min întârziere la publicare.':'Autentifică-te cu Login pentru indicatorii și graficele Nord Pool.';
   $('loading').className='';$('loading').textContent='';await refreshSelectedTrades();render();
  }catch(error){$('loading').className='error';$('loading').textContent='Citirea online a eșuat: '+error.message+'. Ultimele date valide sunt păstrate.';}
