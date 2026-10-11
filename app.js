@@ -7,6 +7,17 @@ import {localParts,addDays} from './web/time.js';
 const $=id=>document.getElementById(id), S={ph:1}, STATUS='ENTSO-E · Statut dezechilibru', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
 const CONFIG={responsive:true,displaylogo:false}, nf=v=>v==null?'':Number(v).toFixed(1), num=v=>v===''||v==null?null:Number(v), dayfmt=d=>d.split('-').reverse().join('.');
 function indicatorLabel(k){
+ return fullIndicatorLabel(k)
+  .replace('ENTSO-E / DAMAS · ','E/D · ').replace('Nord Pool / OPCOM · ','N/O · ')
+  .replace('ENTSO-E · ','E · ').replace('DAMAS · ','D · ')
+  .replace('OPCOM · ','O · ').replace('Nord Pool · ','N · ').replace('Open-Meteo · ','M · ')
+  .replace('Preț dezechilibru','Dezechilibru').replace('Preț ','')
+  .replace('day-ahead','DA').replaceAll('intraday','ID')
+  .replace('mediu ponderat ID','VWAP ID').replace('comercial total','Total')
+  .replace('fizic real','Actual').replace('real','Actual')
+  .replace('Putere indisponibilă','Indisponibilități');
+}
+function fullIndicatorLabel(k){
  const marketLabels={
  'PZU pret':'OPCOM · Preț PZU (EUR/MWh)',
  'PZU volum tranzactionat':'OPCOM · Volum tranzacționat PZU (MWh)',
