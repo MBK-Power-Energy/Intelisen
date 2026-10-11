@@ -10,7 +10,7 @@ function entsoe(documents,store,low,high){
   const wind=new Map(),outages=new Map();
   for(const document of documents)for(const series of xmlSeries(document.document_xml)){
     const m=series.metadata;let label=labelled[document.dataset];
-    if(document.dataset.startsWith('outages_production_')){const old=outages.get(m.documentId+'|'+m.resourceId);if(!old||m.revision>old.metadata.revision||(m.revision===old.metadata.revision&&m.created>old.metadata.created))outages.set(m.documentId+'|'+m.resourceId,series);continue;}
+    if(document.dataset.startsWith('outages_production_')){if(!m.status)m.status=document.dataset.split('_').at(-1);const old=outages.get(m.documentId+'|'+m.resourceId);if(!old||m.revision>old.metadata.revision||(m.revision===old.metadata.revision&&m.created>old.metadata.created))outages.set(m.documentId+'|'+m.resourceId,series);continue;}
     const version=document.dataset==='generation_actual'?'Actual':document.dataset==='wind_solar_forecast_day_ahead'?'DA':document.dataset==='wind_solar_forecast_intraday'?'ID':null;
     if(version&&m.psr==='B16')label='Solar '+version;
     if(version&&['B18','B19'].includes(m.psr))label='Eolian '+version;
