@@ -1,5 +1,5 @@
-import {createMarketChart} from './market-chart.js';
-import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js';
+import {createMarketChart} from './market-chart.js?v=20261011-1935';
+import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261011-1935';
 import {marketReference,contractReference,emaLine} from './market-reference.js';
 import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';
@@ -18,7 +18,7 @@ const message=t=>$('message').textContent=t;
 async function allRows(table,filters){let rows=[];for(let start=0;;start+=1000){let q=client.from(table).select('*').range(start,start+999);q=filters(q);const {data,error}=await q;if(error)throw Error(error.message);rows.push(...data);if(data.length<1000)return rows;if(rows.length>250000)throw Error('Interval prea mare. Selectează mai puține zile.');}}
 function clearPrivate(){generation++;contracts=[];lastBars=null;tradeViews=[];tradeCache.clear();for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';for(const pane of workspace.nodes)for(const name of ['chartTitle','cursor','legend'])pane.querySelector('[data-control="'+name+'"]').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=!!session;$('logout').hidden=!session;}
 async function auth(next){session=next;if(!session){clearPrivate();message('Autentifică-te pentru a vedea datele Nord Pool.');return;}
- const {data,error}=await client.rpc('nordpool_authorized');if(error||data!==true){clearPrivate();message('Acest cont nu are acces la Nord Pool.');return;}$('login').hidden=true;$('private').hidden=false;$('loginShortcut').hidden=true;$('logout').hidden=false;await load();}
+ const {data,error}=await client.rpc('nordpool_authorized').abortSignal(AbortSignal.timeout(15000));if(error||data!==true){clearPrivate();message('Acest cont nu are acces la Nord Pool.');return;}$('login').hidden=true;$('private').hidden=false;$('loginShortcut').hidden=true;$('logout').hidden=false;await load();}
 $('loginForm').onsubmit=async e=>{
  e.preventDefault();const button=e.target.querySelector('button'),feedback=$('loginFeedback');
  const show=(text,state)=>{feedback.hidden=false;feedback.textContent=text;feedback.dataset.state=state;};
