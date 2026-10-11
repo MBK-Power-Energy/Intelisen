@@ -7,6 +7,27 @@ import {localParts,addDays} from './web/time.js';
 const $=id=>document.getElementById(id), S={ph:1}, STATUS='ENTSO-E · Statut dezechilibru', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
 const CONFIG={responsive:true,displaylogo:false}, nf=v=>v==null?'':Number(v).toFixed(1), num=v=>v===''||v==null?null:Number(v), dayfmt=d=>d.split('-').reverse().join('.');
 function indicatorLabel(k){
+ const marketLabels={
+ 'PZU pret':'OPCOM · Preț PZU (EUR/MWh)',
+ 'PZU volum tranzactionat':'OPCOM · Volum tranzacționat PZU (MWh)',
+ 'PZU volum buy':'OPCOM · Volum cumpărare PZU (MWh)',
+ 'PZU volum sell':'OPCOM · Volum vânzare PZU (MWh)',
+ 'IDA1 pret':'OPCOM · Preț IDA1 (EUR/MWh)',
+ 'IDA2 pret':'OPCOM · Preț IDA2 (EUR/MWh)',
+ 'IDA3 pret':'OPCOM · Preț IDA3 (EUR/MWh)',
+ 'ID O':'Nord Pool · Preț deschidere intraday (EUR/MWh)',
+ 'ID H':'Nord Pool · Preț maxim intraday (EUR/MWh)',
+ 'ID L':'Nord Pool · Preț minim intraday (EUR/MWh)',
+ 'ID C':'Nord Pool · Preț închidere intraday (EUR/MWh)',
+ 'ID VWAP':'Nord Pool · Preț mediu ponderat intraday (EUR/MWh)',
+ 'Spread ID VWAP - PZU':'Nord Pool / OPCOM · Diferență intraday VWAP − PZU (EUR/MWh)',
+ 'ID volum buy':'Nord Pool · Volum cumpărare intraday',
+ 'ID volum sell':'Nord Pool · Volum vânzare intraday',
+ 'PZU 15 min (RON/MWh)':'OPCOM · Preț PZU 15 min (RON/MWh)',
+ 'PZU 30 min (RON/MWh)':'OPCOM · Preț PZU 30 min (RON/MWh)',
+ 'PZU 60 min (RON/MWh)':'OPCOM · Preț PZU 60 min (RON/MWh)'
+ };
+ if(marketLabels[k])return marketLabels[k];
  if(!FUNDAMENTALS.includes(k)||k.includes(' · '))return k;
  if(k==='Temperatura')return 'Open-Meteo · Temperatură (°C)';
  if(k==='Indisponibilitati')return 'ENTSO-E · Putere indisponibilă (MW)';
