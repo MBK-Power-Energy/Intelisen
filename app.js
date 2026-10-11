@@ -1,3 +1,4 @@
+import {readIndicatorCache} from './web/indicator-cache.js';
 import {loadDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js';
 import {nordpool} from './web/api.js';
 import {localParts,addDays} from './web/time.js';
@@ -91,14 +92,19 @@ function exportCsv(){const rows=[['Data','PH','Indicator','Anterior','Curent','A
 async function exportHtml(){let plotly=document.getElementById('plotly-bundle')?.textContent;if(!plotly){const response=await fetch('vendor/plotly.min.js');if(!response.ok)throw Error('Nu pot incarca biblioteca pentru export');plotly=await response.text();}const charts=[...document.querySelectorAll('.js-plotly-plot')].filter(el=>!el.closest('[hidden]'));let body='<h1>Intelisen · Dashboard</h1><p>PH '+S.ph+' · '+$('mode').selectedOptions[0].text+' · CET/CEST</p>';charts.forEach((c,i)=>{body+=`<div id="export${i}"></div><script>Plotly.newPlot('export${i}',${JSON.stringify(c.data).replaceAll('<','\\u003c')},${JSON.stringify(c.layout).replaceAll('<','\\u003c')},{responsive:true});<\/script>`;});download('intelisen_dashboard.html','<!doctype html><html><head><meta charset="utf-8"><title>Intelisen</title><script>'+plotly.replaceAll('</script>','<\\/script>')+'<\/script></head><body>'+body+'</body></html>','text/html');}
 let loading=false,pending=false,tradeSelection='';
 function clearPrivate(){S.contracts=[];S.trades=[];S.npAccess=false;tradeSelection='';for(const row of S.levels?.values()||[])for(const key of ['ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell'])row[key]=null;}
+function applyDashboard(dashboard,from,to){
+ S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
+ S.snapshot={created_at_utc:dashboard.collectedAt,period_start:from,period_end:to};
+}
 async function refreshOnline(){
  if(loading){pending=true;return;}loading=true;
  try{
   const from=$('from').value,to=$('to').value;
-  const dashboard=await loadDashboard([addDays(from,-7),'2026-10-01'].sort().at(-1),to);
+  const low=[addDays(from,-7),'2026-10-01'].sort().at(-1);
+  if(!S.data||S.snapshot?.period_start!==from||S.snapshot?.period_end!==to){const cached=readIndicatorCache(low,to);if(cached){applyDashboard(cached,from,to);render();$('loading').textContent='Date salvate · '+new Date(cached.collectedAt).toLocaleString('ro-RO')+' · se actualizează…';}}
+  const dashboard=await loadDashboard(low,to);
   if(from!==$('from').value||to!==$('to').value){pending=true;return;}
-  S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
-  S.snapshot={created_at_utc:dashboard.collectedAt,period_start:from,period_end:to};
+  applyDashboard(dashboard,from,to);
   $('loginHint').textContent=dashboard.npAccess?'Nord Pool: acces autorizat · tranzacțiile au aproximativ 20 min întârziere la publicare.':'Autentifică-te cu Login pentru indicatorii și graficele Nord Pool.';
   $('loading').className='';$('loading').textContent='';await refreshSelectedTrades();render();
  }catch(error){$('loading').className='error';$('loading').textContent='Citirea online a eșuat: '+error.message+'. Ultimele date valide sunt păstrate.';}

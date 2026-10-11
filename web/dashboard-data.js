@@ -1,3 +1,4 @@
+import {writeIndicatorCache} from './indicator-cache.js';
 import {cachedRows,privateRows,authorized} from './api.js';
 import {SeriesStore,opcom,xmlSeries,numeric,signedImbalance} from './normalize.js';
 import {dayRange,midnight,addDays,localParts} from './time.js';
@@ -46,8 +47,8 @@ function damas(rows,store){
 }
 const difference=(r,a,b)=>numeric(r[a])===null||numeric(r[b])===null?null:r[a]-r[b];
 export async function loadDashboard(from,to,publicOnly=false){
-  const npAccess=publicOnly?false:await authorized(),cacheKey='intelisen-indicatori-public|'+from+'|'+to;
-  if(!npAccess&&!publicOnly){try{const saved=JSON.parse(sessionStorage.getItem(cacheKey));if(saved&&Date.now()-saved.time<60000)return saved.data;}catch{}}
+  const npAccess=publicOnly?false:await authorized();
+
   if(from<'2026-10-01'||to<from)throw Error('Selectează o perioadă începând cu 1 octombrie 2026.');
   const low=midnight(addDays(from,-1)),high=midnight(addDays(to,1));
   const range={delivery_date:'gte.'+addDays(from,-1),and:`(delivery_date.lte.${addDays(to,1)})`};
@@ -75,7 +76,7 @@ export async function loadDashboard(from,to,publicOnly=false){
     r['Spread ID VWAP - PZU']=difference(r,'ID VWAP','PZU pret');const net=r['ENTSO-E · Dezechilibru (MWh)'];r['ENTSO-E · Statut dezechilibru']=net===null?null:Math.sign(net);levels.push(r);
   }
   const result={levels,contracts,ida,npAccess,units:Object.fromEntries(store.units),collectedAt:new Date().toISOString(),coverage:{opcom:tables.length,entsoe:documents.length,damas:reports.length,weather:weather.length}};
-  if(publicOnly)try{sessionStorage.setItem(cacheKey,JSON.stringify({time:Date.now(),data:result}));}catch{}
+  writeIndicatorCache(from,to,result);
   return result;
 }
 export async function loadTrades(contracts,days,ph){
