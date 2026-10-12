@@ -47,7 +47,7 @@ function fullIndicatorLabel(k){
 }
 function selected(id){return [...$(id).selectedOptions].map(o=>o.value);}
 function indicators(){return [...selected('markets'),...selected('sen')];}
-function dates(){return S.dates.filter(d=>d>=$('from').value&&d<=$('to').value);}
+function dates(){return [...$('dayOptions').querySelectorAll('input:checked')].map(input=>input.value).sort();}
 function prior(d){let t=new Date(d+'T12:00:00Z');t.setUTCDate(t.getUTCDate()-1);if($('baseline').value==='work')while([0,6].includes(t.getUTCDay()))t.setUTCDate(t.getUTCDate()-1);return t.toISOString().slice(0,10);}
 function level(d,ph,k){return S.levels.get(d+'|'+ph)?.[k]??null;}
 function value(d,ph,k){const cur=level(d,ph,k),old=level(prior(d),ph,k);if(k===STATUS||$('mode').value==='value')return cur;if(cur==null||old==null)return null;return $('mode').value==='delta'?cur-old:old===0?null:100*(cur-old)/Math.abs(old);}
@@ -96,13 +96,24 @@ function applyDashboard(dashboard,from,to){
  S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
  S.snapshot={created_at_utc:dashboard.collectedAt,period_start:from,period_end:to};
 }
+let customDays=false,dayPickerToday='';
 function updateRollingPeriod(){
  const today=localParts(Date.now(),'Europe/Bucharest').day;
- $('from').value=addDays(today,-5);$('to').value=addDays(today,1);
- for(const id of ['from','to']){$(id).max=addDays(today,1);$(id).disabled=true;}
+ if(dayPickerToday!==today){
+  const chosen=new Set(customDays?dates():Array.from({length:7},(_,i)=>addDays(today,i-5)));
+  const labels=[];
+  for(let day='2026-10-01';day<=addDays(today,1);day=addDays(day,1)){
+   const label=document.createElement('label'),input=document.createElement('input');
+   input.type='checkbox';input.value=day;input.checked=chosen.has(day);label.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px';label.append(input,document.createTextNode(dayfmt(day)));labels.push(label);
+  }
+  $('dayOptions').replaceChildren(...labels);dayPickerToday=today;
+ }
+ const days=dates();$('from').value=days[0]||today;$('to').value=days.at(-1)||today;
+ $('daySummary').textContent='Zile afișate · '+days.length;
 }
 async function refreshOnline(){
  updateRollingPeriod();
+ if(!dates().length){$('loading').textContent='Selectează cel puțin o zi.';return;}
  if(loading){pending=true;return;}loading=true;
  try{
   const from=$('from').value,to=$('to').value;
@@ -124,11 +135,12 @@ async function refreshSelectedTrades(){
 }
 async function init(){
  updateRollingPeriod();
+ $('dayOptions').addEventListener('change',()=>{customDays=true;updateRollingPeriod();render();refreshOnline();});
  fillSelect('markets',MARKETS,['PZU pret']);fillSelect('sen',FUNDAMENTALS,['Temperatura','Consum DA','Solar DA','Eolian DA','Import DA','Export DA']);
  $('mode').value='value';$('baseline').value='calendar';
  S.trades=[];S.contracts=[];S.ida=[];
  for(let ph=1;ph<=24;ph++){const b=document.createElement('button');b.textContent='PH-'+String(ph).padStart(2,'0');b.classList.toggle('active',ph===1);b.onclick=async()=>{S.ph=ph;[...$('tabs').children].forEach(x=>x.classList.toggle('active',x===b));S.trades=[];render();await refreshSelectedTrades();render();};$('tabs').append(b);}
- document.querySelectorAll('input,select').forEach(e=>{if(!['from','to'].includes(e.id))e.addEventListener('change',async()=>{render();if(['showtrades','scope'].includes(e.id)){await refreshSelectedTrades();render();}})});
+ document.querySelectorAll('input,select').forEach(e=>{if(!['from','to'].includes(e.id)&&!e.closest('#dayOptions'))e.addEventListener('change',async()=>{render();if(['showtrades','scope'].includes(e.id)){await refreshSelectedTrades();render();}})});
  $('csv').onclick=exportCsv;$('html').onclick=()=>exportHtml().catch(error=>alert(error.message));
  window.addEventListener('intelisen-theme-change',render);
  nordpool.auth.onAuthStateChange((event,session)=>{if(!session){clearPrivate();render();}else setTimeout(refreshOnline,0);});
