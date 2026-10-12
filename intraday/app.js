@@ -1,5 +1,5 @@
-import {createMarketChart} from './market-chart.js?v=20261012-thin-lines';
-import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261012-thin-lines';
+import {createMarketChart} from './market-chart.js?v=20261012-contract-titles';
+import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261012-contract-titles';
 import {marketReference,contractReference,emaLine} from './market-reference.js';
 import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';

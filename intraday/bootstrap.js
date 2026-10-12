@@ -6,4 +6,4 @@ function recover(){
 }
 window.addEventListener('unhandledrejection',()=>{if(status.textContent==='Verific sesiunea…')recover();});
 timer=setTimeout(()=>{if(status.textContent==='Verific sesiunea…')recover();},20000);
-try{await import('./app.js?v=20261012-thin-lines');}catch(error){recover();console.error('Intraday initialization failed',error);}finally{clearTimeout(timer);}
+try{await import('./app.js?v=20261012-contract-titles');}catch(error){recover();console.error('Intraday initialization failed',error);}finally{clearTimeout(timer);}
