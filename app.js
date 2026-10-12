@@ -1,7 +1,7 @@
-import {readIndicatorCache} from './web/indicator-cache.js';
-import {loadDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js';
+import {readIndicatorCache} from './web/indicator-cache.js?v=20261012-speed';
+import {loadDashboard,loadPrivateDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js?v=20261012-speed';
 import {nordpool} from './web/api.js';
-import {localParts,addDays} from './web/time.js';
+import {localParts,addDays} from './web/time.js?v=20261012-speed';
 'use strict';
 const $=id=>document.getElementById(id), S={ph:1}, STATUS='ENTSO-E · Statut dezechilibru', COLORS=['#2563eb','#ea580c','#7c3aed','#16a34a','#dc2626','#0891b2','#c026d3'];
 const CONFIG={responsive:true,displaylogo:false}, nf=v=>v==null?'':Number(v).toFixed(1), num=v=>v===''||v==null?null:Number(v), dayfmt=d=>d.split('-').reverse().join('.');
@@ -90,7 +90,8 @@ function download(name,text,type){const url=URL.createObjectURL(new Blob([text],
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"';}
 function exportCsv(){const rows=[['Data','PH','Indicator','Anterior','Curent','Afisat','Mod','Reper']];for(const d of dates())for(let ph=1;ph<=24;ph++)for(const k of indicators())rows.push([d,ph,k,level(prior(d),ph,k),level(d,ph,k),value(d,ph,k),$('mode').value,$('baseline').value]);download('intelisen_'+$('from').value+'_'+$('to').value+'.csv','\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv');}
 async function exportHtml(){let plotly=document.getElementById('plotly-bundle')?.textContent;if(!plotly){const response=await fetch('vendor/plotly.min.js');if(!response.ok)throw Error('Nu pot incarca biblioteca pentru export');plotly=await response.text();}const charts=[...document.querySelectorAll('.js-plotly-plot')].filter(el=>!el.closest('[hidden]'));let body='<h1>Intelisen · Dashboard</h1><p>PH '+S.ph+' · '+$('mode').selectedOptions[0].text+' · CET/CEST</p>';charts.forEach((c,i)=>{body+=`<div id="export${i}"></div><script>Plotly.newPlot('export${i}',${JSON.stringify(c.data).replaceAll('<','\\u003c')},${JSON.stringify(c.layout).replaceAll('<','\\u003c')},{responsive:true});<\/script>`;});download('intelisen_dashboard.html','<!doctype html><html><head><meta charset="utf-8"><title>Intelisen</title><script>'+plotly.replaceAll('</script>','<\\/script>')+'<\/script></head><body>'+body+'</body></html>','text/html');}
-let loading=false,pending=false,tradeSelection='';
+let loading=false,pending=false,tradeSelection='',dashboardVersion=0,authVersion=0,privateVersion=-1,activeUserId=null;
+const privateKeys=['ID O','ID H','ID L','ID C','ID VWAP','ID volum buy','ID volum sell','Spread ID VWAP - PZU'];
 function clearPrivate(){S.contracts=[];S.trades=[];S.npAccess=false;tradeSelection='';for(const row of S.levels?.values()||[])for(const key of ['ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell'])row[key]=null;}
 function applyDashboard(dashboard,from,to){
  S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
@@ -111,26 +112,41 @@ function updateRollingPeriod(){
  const days=dates();$('from').value=days[0]||today;$('to').value=days.at(-1)||today;
  $('daySummary').textContent='Zile afișate · '+days.length;
 }
+function publicDisplay(dashboard){
+ if(!S.npAccess||privateVersion!==authVersion)return dashboard;
+ return {...dashboard,npAccess:true,contracts:S.contracts,levels:dashboard.levels.map(row=>{const previous=S.levels.get(row.Data+'|'+row.PH);if(!previous)return row;const merged={...row,...Object.fromEntries(privateKeys.map(key=>[key,previous[key]??null]))};merged['Spread ID VWAP - PZU']=num(merged['ID VWAP'])===null||num(merged['PZU pret'])===null?null:merged['ID VWAP']-merged['PZU pret'];return merged;})};
+}
+async function refreshPrivate(dashboard,low,to,from,ticket){
+ const accessVersion=authVersion;
+ try{
+  const enriched=await loadPrivateDashboard(dashboard,low,to);
+  if(ticket!==dashboardVersion||accessVersion!==authVersion||from!==$('from').value||to!==$('to').value)return;
+  privateVersion=authVersion;applyDashboard(enriched,from,to);
+  $('loginHint').textContent=enriched.npAccess?'Nord Pool: acces autorizat · tranzacțiile au aproximativ 20 min întârziere la publicare.':'Autentifică-te cu Login pentru indicatorii și graficele Nord Pool.';
+  render();
+  if(enriched.npAccess){await refreshSelectedTrades();if(ticket===dashboardVersion&&accessVersion===authVersion)renderTrades(dates());}
+ }catch(error){if(ticket===dashboardVersion&&accessVersion===authVersion)$('loginHint').textContent='Datele publice sunt disponibile. Nord Pool nu a putut fi actualizat: '+error.message;}
+}
 async function refreshOnline(){
  updateRollingPeriod();
  if(!dates().length){$('loading').textContent='Selectează cel puțin o zi.';return;}
- if(loading){pending=true;return;}loading=true;
+ if(loading){pending=true;return;}loading=true;const ticket=++dashboardVersion;
  try{
   const from=$('from').value,to=$('to').value;
-  const low=[addDays(from,-7),'2026-10-01'].sort().at(-1);
-  if(!S.data||S.snapshot?.period_start!==from||S.snapshot?.period_end!==to){const cached=readIndicatorCache(low,to);if(cached){applyDashboard(cached,from,to);render();$('loading').textContent='Date salvate · '+new Date(cached.collectedAt).toLocaleString('ro-RO')+' · se actualizează…';}}
-  const dashboard=await loadDashboard(low,to);
+  const low=[addDays(from,-3),'2026-10-01'].sort().at(-1);
+  if(!S.data||S.snapshot?.period_start!==from||S.snapshot?.period_end!==to){const cached=readIndicatorCache(low,to);if(cached){applyDashboard(publicDisplay(cached),from,to);render();$('loading').textContent='Date salvate · '+new Date(cached.collectedAt).toLocaleString('ro-RO')+' · se actualizează…';}}
+  const dashboard=await loadDashboard(low,to,true);
   if(from!==$('from').value||to!==$('to').value){pending=true;return;}
-  applyDashboard(dashboard,from,to);
-  $('loginHint').textContent=dashboard.npAccess?'Nord Pool: acces autorizat · tranzacțiile au aproximativ 20 min întârziere la publicare.':'Autentifică-te cu Login pentru indicatorii și graficele Nord Pool.';
-  $('loading').className='';$('loading').textContent='';await refreshSelectedTrades();render();
+  applyDashboard(publicDisplay(dashboard),from,to);render();
+  $('loading').className='';$('loading').textContent='';
+  void refreshPrivate(dashboard,low,to,from,ticket);
  }catch(error){$('loading').className='error';$('loading').textContent='Citirea online a eșuat: '+error.message+'. Ultimele date valide sunt păstrate.';}
  finally{loading=false;if(pending){pending=false;refreshOnline();}}
 }
 async function refreshSelectedTrades(){
  if(!S.npAccess||!$('showtrades').checked||$('scope').value==='PH sumar'){S.trades=[];return;}
- const selection=dates().join(',')+'|'+S.ph,ticket=selection;tradeSelection=ticket;
- try{const trades=await loadTrades(S.contracts,dates(),S.ph);if(ticket===tradeSelection&&S.npAccess)S.trades=trades;}
+ const selection=dates().join(',')+'|'+S.ph,ticket=selection,accessVersion=authVersion;tradeSelection=ticket;
+ try{const trades=await loadTrades(S.contracts,dates(),S.ph);if(ticket===tradeSelection&&accessVersion===authVersion&&S.npAccess)S.trades=trades;}
  catch(error){$('loginHint').textContent='Tranzacțiile nu au putut fi actualizate: '+error.message;}
 }
 async function init(){
@@ -143,7 +159,7 @@ async function init(){
  document.querySelectorAll('input,select').forEach(e=>{if(!['from','to'].includes(e.id)&&!e.closest('#dayOptions'))e.addEventListener('change',async()=>{render();if(['showtrades','scope'].includes(e.id)){await refreshSelectedTrades();render();}})});
  $('csv').onclick=exportCsv;$('html').onclick=()=>exportHtml().catch(error=>alert(error.message));
  window.addEventListener('intelisen-theme-change',render);
- nordpool.auth.onAuthStateChange((event,session)=>{if(!session){clearPrivate();render();}else setTimeout(refreshOnline,0);});
+ nordpool.auth.onAuthStateChange((event,session)=>{authVersion++;const userId=session?.user?.id||null;if(userId!==activeUserId){clearPrivate();render();}activeUserId=userId;if(!session){clearPrivate();render();}else setTimeout(refreshOnline,0);});
  await refreshOnline();
 }
 init().catch(error=>{$('loading').textContent=error.message;});

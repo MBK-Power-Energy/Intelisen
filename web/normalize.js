@@ -1,4 +1,4 @@
-import {localParts,midnight,duration} from './time.js';
+import {localParts,midnight,duration} from './time.js?v=20261012-speed';
 export const numeric=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
 // Matches ema's exported A86 rows: A02 deficit, A01 surplus.
 export function signedImbalance(value,direction){value=numeric(value);return value===null?null:direction==='A02'?Math.abs(value):direction==='A01'?-Math.abs(value):null;}
@@ -35,10 +35,11 @@ export class SeriesStore{
     for(let time=start;time<end;time+=900000)this.put(name,time,mode==='sum'?value/count:value,mode,unit);
   }
   hourly(from,to){
-    const result=new Map();
+    const result=new Map(),parts=new Map();
+    const hourParts=hour=>{if(!parts.has(hour))parts.set(hour,localParts(hour));return parts.get(hour);};
     for(const [name,points]of this.values){const hours=new Map();for(const [time,value]of points){const hour=Math.floor(time/3600000)*3600000;if(!hours.has(hour))hours.set(hour,new Map());hours.get(hour).set(time,value);}
-      const ambiguity=new Map();for(const hour of hours.keys()){const p=localParts(hour),key=p.day+'|'+(p.hour+1);ambiguity.set(key,(ambiguity.get(key)||0)+1);}
-      for(const [hour,quarters]of hours){const p=localParts(hour),key=p.day+'|'+(p.hour+1);if(p.day<from||p.day>to||quarters.size!==4||ambiguity.get(key)!==1)continue;
+      const ambiguity=new Map();for(const hour of hours.keys()){const p=hourParts(hour),key=p.day+'|'+(p.hour+1);ambiguity.set(key,(ambiguity.get(key)||0)+1);}
+      for(const [hour,quarters]of hours){const p=hourParts(hour),key=p.day+'|'+(p.hour+1);if(p.day<from||p.day>to||quarters.size!==4||ambiguity.get(key)!==1)continue;
         if(![0,1,2,3].every(i=>quarters.has(hour+i*900000)))continue;
         const total=[...quarters.values()].reduce((a,b)=>a+b,0);if(!result.has(key))result.set(key,{Data:p.day,PH:p.hour+1});result.get(key)[name]=this.modes.get(name)==='sum'?total:total/4;
       }

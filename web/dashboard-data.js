@@ -1,15 +1,20 @@
-import {writeIndicatorCache} from './indicator-cache.js';
+import {writeIndicatorCache} from './indicator-cache.js?v=20261012-speed';
 import {cachedRows,privateRows,authorized} from './api.js';
-import {SeriesStore,opcom,xmlSeries,numeric,signedImbalance} from './normalize.js';
-import {dayRange,midnight,addDays,localParts} from './time.js';
+import {SeriesStore,opcom,xmlSeries,numeric,signedImbalance} from './normalize.js?v=20261012-speed';
+import {dayRange,midnight,addDays,localParts} from './time.js?v=20261012-speed';
 
 export const MARKETS=['PZU pret','PZU volum tranzactionat','PZU volum buy','PZU volum sell','IDA1 pret','IDA2 pret','IDA3 pret','ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell','PZU 15 min (RON/MWh)','PZU 30 min (RON/MWh)','PZU 60 min (RON/MWh)'];
 export const FUNDAMENTALS=['Temperatura','Consum DA','Consum Actual','Eroare consum','Solar DA','Solar ID','Solar Actual','Eroare solar DA','Eroare solar ID','Eolian DA','Eolian ID','Eolian Actual','Eroare eolian DA','Eroare eolian ID','Sarcina reziduala DA','Sarcina reziduala ID','Sarcina reziduala Actual','Import DA','Export DA','Import Total','Export Total','Import Actual','Export Actual','Indisponibilitati','ENTSO-E · Dezechilibru (MWh)','ENTSO-E · Statut dezechilibru','DAMAS · Preț dezechilibru deficit (RON/MWh)','DAMAS · Preț dezechilibru excedent (RON/MWh)','ENTSO-E · Preț dezechilibru deficit (RON/MWh)','ENTSO-E · Preț dezechilibru excedent (RON/MWh)','DAMAS · Rezervă activată (brut)','DAMAS · Volum reglaj în sus (brut)','DAMAS · Volum reglaj în jos (brut)','DAMAS · Dezechilibru estimat (brut)'];
 const coreDatasets=['load_actual','load_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','generation_actual','imbalance_volumes','imbalance_prices','outages_production_A05','outages_production_A09','outages_production_A13'];
 const labelled={load_actual:'Consum Actual',load_day_ahead:'Consum DA'};
+const xmlCache=new Map();
+function parsedDocument(document){
+ const xml=document.document_xml;if(xmlCache.has(xml))return xmlCache.get(xml);
+ const series=xmlSeries(xml);xmlCache.set(xml,series);if(xmlCache.size>512)xmlCache.delete(xmlCache.keys().next().value);return series;
+}
 function entsoe(documents,store,low,high){
   const wind=new Map(),outages=new Map();
-  for(const document of documents)for(const series of xmlSeries(document.document_xml)){
+  for(const document of documents)for(const series of parsedDocument(document)){
     const m=series.metadata;let label=labelled[document.dataset];
     if(document.dataset.startsWith('outages_production_')){if(!m.status)m.status=document.dataset.split('_').at(-1);const old=outages.get(m.documentId+'|'+m.resourceId);if(!old||m.revision>old.metadata.revision||(m.revision===old.metadata.revision&&m.created>old.metadata.created))outages.set(m.documentId+'|'+m.resourceId,series);continue;}
     const version=document.dataset==='generation_actual'?'Actual':document.dataset==='wind_solar_forecast_day_ahead'?'DA':document.dataset==='wind_solar_forecast_intraday'?'ID':null;
@@ -55,8 +60,8 @@ export async function loadDashboard(from,to,publicOnly=false){
   const flowDatasets=['BG','HU','RS','MD','UA'].flatMap(c=>['import','export'].flatMap(d=>[`commercial_exchanges_${c}_${d}_A01`,`commercial_exchanges_${c}_${d}_A05`,`physical_flows_${c}_${d}`]));
   const [tables,rates,documents,reports,weather]=await Promise.all([
     cachedRows('opcom_tables',{...range,order:'delivery_date,source,dataset'},r=>r.source+'|'+r.delivery_date+'|'+r.dataset),cachedRows('bnr_rates',{order:'rate_date'},r=>r.rate_date),
-    cachedRows('entsoe_documents',{...range,dataset:'in.('+[...coreDatasets,...flowDatasets].join(',')+')',order:'dataset,delivery_date'},r=>r.dataset+'|'+r.delivery_date),
-    cachedRows('damas_report_observations',{interval_start:'gte.'+new Date(low).toISOString(),and:`(interval_start.lt.${new Date(high).toISOString()})`,order:'report,interval_start'},r=>r.report+'|'+r.interval_start),
+    cachedRows('entsoe_documents',{...range,select:'dataset,delivery_date,document_xml,collected_at',dataset:'in.('+[...coreDatasets,...flowDatasets].join(',')+')',order:'dataset,delivery_date'},r=>r.dataset+'|'+r.delivery_date),
+    cachedRows('damas_report_observations',{report:'in.(estimatedImbalancePrices,estimatedPowerSystemImbalance,scheduledExchanges)',interval_start:'gte.'+new Date(low).toISOString(),and:`(interval_start.lt.${new Date(high).toISOString()})`,order:'report,interval_start'},r=>r.report+'|'+r.interval_start),
     cachedRows('weather_weighted_hours',{observed_at:'gte.'+new Date(low).toISOString(),and:`(observed_at.lt.${new Date(high).toISOString()})`,order:'observed_at'},r=>r.observed_at)
   ]);
   const store=new SeriesStore(),{ida}=opcom(tables,rates,store);
@@ -78,6 +83,15 @@ export async function loadDashboard(from,to,publicOnly=false){
   const result={levels,contracts,ida,npAccess,units:Object.fromEntries(store.units),collectedAt:new Date().toISOString(),coverage:{opcom:tables.length,entsoe:documents.length,damas:reports.length,weather:weather.length}};
   writeIndicatorCache(from,to,result);
   return result;
+}
+export async function loadPrivateDashboard(dashboard,from,to){
+ if(!await authorized())return dashboard;
+ const records=await privateRows('nordpool_contracts',q=>q.eq('area','TEL').gte('delivery_date',from).lte('delivery_date',to).order('delivery_start').order('contract_id'));
+ const contracts=records.filter(r=>Date.parse(r.payload.deliveryEnd)-Date.parse(r.payload.deliveryStart)===3600000).map(r=>{const p=r.payload,t=Date.parse(p.deliveryStart),parts=localParts(t);return {...p,zi:parts.day,ph:parts.hour+1,start_local:parts.day+'T'+String(parts.hour).padStart(2,'0')+':00:00'};});
+ const store=new SeriesStore();
+ for(const c of contracts)if(numeric(c.volume)>0)for(const [label,field]of [['ID O','openPrice'],['ID H','highPrice'],['ID L','lowPrice'],['ID C','closePrice'],['ID VWAP','averagePrice'],['ID volum buy','buyVolume'],['ID volum sell','sellVolume']])store.interval(label,Date.parse(c.deliveryStart),Date.parse(c.deliveryEnd),c[field]);
+ const hourly=store.hourly(from,to),levels=dashboard.levels.map(row=>{const r={...row,...hourly.get(row.Data+'|'+row.PH)};r['Spread ID VWAP - PZU']=difference(r,'ID VWAP','PZU pret');return r;});
+ return {...dashboard,levels,contracts,npAccess:true};
 }
 export async function loadTrades(contracts,days,ph){
   const ids=contracts.filter(c=>days.includes(c.zi)&&c.ph===ph).map(c=>c.contractId);if(!ids.length)return [];

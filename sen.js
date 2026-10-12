@@ -6,12 +6,11 @@ if(location.hash==='#indicatori'||location.hash==='#comparisons')location.replac
 window.addEventListener('sen-ready',()=>{
  const preload=async()=>{
   if(navigator.connection?.saveData)return;
-  for(const href of ['indicatori/','app.js']){const link=document.createElement('link');link.rel='prefetch';link.href=href;document.head.append(link);}
+  for(const href of ['indicatori/','app.js?v=20261012-speed']){const link=document.createElement('link');link.rel='prefetch';link.href=href;document.head.append(link);}
   try{
-   const [{loadDashboard},{localParts,addDays}]=await Promise.all([import('./web/dashboard-data.js'),import('./web/time.js')]);
-   const anchor=new Date(localParts(Date.now()).day+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-((anchor.getUTCDay()+6)%7));
-   const monday=anchor.toISOString().slice(0,10);
-   await loadDashboard([addDays(monday,-7),'2026-10-01'].sort().at(-1),addDays(monday,6),true);
+   const [{loadDashboard},{localParts,addDays}]=await Promise.all([import('./web/dashboard-data.js?v=20261012-speed'),import('./web/time.js?v=20261012-speed')]);
+   const today=localParts(Date.now(),'Europe/Bucharest').day;
+   await loadDashboard([addDays(today,-8),'2026-10-01'].sort().at(-1),addDays(today,1),true);
   }catch{/* Preloading is optional; Indicatori retries on navigation. */}
  };
  if('requestIdleCallback' in window)requestIdleCallback(preload,{timeout:10000});else setTimeout(preload,3000);

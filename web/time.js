@@ -1,6 +1,8 @@
 export const MARKET_ZONE='Europe/Brussels';
+const timeFormatters=new Map();
 export function localParts(time,zone=MARKET_ZONE){
-  const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(time)).map(x=>[x.type,x.value]));
+  if(!timeFormatters.has(zone))timeFormatters.set(zone,new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));
+  const p=Object.fromEntries(timeFormatters.get(zone).formatToParts(new Date(time)).map(x=>[x.type,x.value]));
   return {day:`${p.year}-${p.month}-${p.day}`,hour:Number(p.hour),minute:Number(p.minute)};
 }
 export function midnight(day,zone=MARKET_ZONE){
