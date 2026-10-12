@@ -5,8 +5,8 @@ create or replace function public.tick_nordpool_history() returns text language 
 declare q record;username text;password text;subscription text;token text;r record;body jsonb;g jsonb;c jsonb;a timestamptz;b timestamptz;n integer;
 begin
  if not pg_try_advisory_xact_lock(71386424) then return 'skipped';end if;
- -- Keep a margin below the Free database quota; do not delete historical data.
- if pg_database_size(current_database())>450*1024*1024 then return 'capacity_limit';end if;
+ -- Keep a 1 GiB margin below the Pro included disk allowance.
+ if pg_database_size(current_database())>7::bigint*1024*1024*1024 then return 'capacity_limit';end if;
  select * into q from nordpool_private.history_queue where finished_at is null order by (slot=0) desc,attempted_at nulls first,delivery_date,slot limit 1;
  if not found then return 'complete';end if;
  begin
