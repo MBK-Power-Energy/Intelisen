@@ -23,8 +23,15 @@ $('loginForm').onsubmit=async e=>{
  e.preventDefault();const button=e.target.querySelector('button'),feedback=$('loginFeedback');
  const show=(text,state)=>{feedback.hidden=false;feedback.textContent=text;feedback.dataset.state=state;};
  button.disabled=true;show('Se trimite linkul de autentificare…','pending');
- try{const {error}=await client.auth.signInWithOtp({email:$('email').value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;show('Cererea a fost trimisă. Dacă adresa este autorizată, vei primi un link de autentificare. Verifică Inbox și Spam și deschide linkul în același browser.','success');}
+ try{const {error}=await client.auth.signInWithOtp({email:$('email').value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;show('Cererea a fost trimisă. Verifică ultimul email primit. Dacă acesta conține un cod, introdu-l mai jos pentru autentificare.','success');}
  catch(error){show('Linkul nu a putut fi trimis. '+error.message,'error');}
+ finally{button.disabled=false;}
+};
+$('codeForm').onsubmit=async event=>{
+ event.preventDefault();if(!$('email').reportValidity())return;
+ const button=event.target.querySelector('button'),feedback=$('codeFeedback');button.disabled=true;feedback.hidden=false;feedback.textContent='Verific codul…';
+ try{const {data,error}=await client.auth.verifyOtp({email:$('email').value.trim(),token:$('emailCode').value.trim(),type:'email'});if(error)throw error;$('emailCode').value='';feedback.textContent='Autentificare confirmată.';await auth(data.session);}
+ catch{feedback.textContent='Codul este invalid, expirat sau deja folosit. Solicită un cod nou și introdu-l din ultimul email.';}
  finally{button.disabled=false;}
 };
 $('logout').onclick=async()=>{await client.auth.signOut();session=null;clearPrivate();message('Sesiune închisă.');};

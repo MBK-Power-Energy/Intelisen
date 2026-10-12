@@ -17,6 +17,6 @@ try{
   client.auth.stopAutoRefresh();
   confirmationFailed=status.textContent.startsWith('Linkul a expirat');
  }
- await import('./app.js?v=20261012-confirm-link');
+ await import('./app.js?v=20261012-email-code');
  if(confirmationFailed)status.textContent='Linkul a expirat sau a fost deja folosit. Solicită un link nou prin Login.';
 }catch(error){recover();console.error('Intraday initialization failed',error);}finally{clearTimeout(timer);}
