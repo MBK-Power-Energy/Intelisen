@@ -98,8 +98,8 @@ function applyDashboard(dashboard,from,to){
 }
 function updateRollingPeriod(){
  const today=localParts(Date.now(),'Europe/Bucharest').day;
- $('from').value=addDays(today,-6);$('to').value=today;
- for(const id of ['from','to']){$(id).max=today;$(id).disabled=true;}
+ $('from').value=addDays(today,-5);$('to').value=addDays(today,1);
+ for(const id of ['from','to']){$(id).max=addDays(today,1);$(id).disabled=true;}
 }
 async function refreshOnline(){
  updateRollingPeriod();
