@@ -96,7 +96,13 @@ function applyDashboard(dashboard,from,to){
  S.data=dashboard;S.levels=new Map(dashboard.levels.map(r=>[r.Data+'|'+r.PH,r]));S.dates=[...new Set(dashboard.levels.map(r=>r.Data))];S.contracts=dashboard.contracts;S.ida=dashboard.ida;S.npAccess=dashboard.npAccess;
  S.snapshot={created_at_utc:dashboard.collectedAt,period_start:from,period_end:to};
 }
+function updateRollingPeriod(){
+ const today=localParts(Date.now(),'Europe/Bucharest').day;
+ $('from').value=addDays(today,-6);$('to').value=today;
+ for(const id of ['from','to']){$(id).max=today;$(id).disabled=true;}
+}
 async function refreshOnline(){
+ updateRollingPeriod();
  if(loading){pending=true;return;}loading=true;
  try{
   const from=$('from').value,to=$('to').value;
@@ -117,9 +123,7 @@ async function refreshSelectedTrades(){
  catch(error){$('loginHint').textContent='Tranzacțiile nu au putut fi actualizate: '+error.message;}
 }
 async function init(){
- const today=localParts(Date.now()).day,anchor=new Date(today+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-((anchor.getUTCDay()+6)%7));
- $('from').value=[anchor.toISOString().slice(0,10),'2026-10-01'].sort().at(-1);$('to').value=addDays(anchor.toISOString().slice(0,10),6);
- for(const id of ['from','to']){$(id).min='2026-10-01';$(id).max=[addDays(today,1),$('to').value].sort().at(-1);$(id).addEventListener('change',refreshOnline);}
+ updateRollingPeriod();
  fillSelect('markets',MARKETS,['PZU pret']);fillSelect('sen',FUNDAMENTALS,['Temperatura','Consum DA','Solar DA','Eolian DA','Import DA','Export DA']);
  $('mode').value='value';$('baseline').value='calendar';
  S.trades=[];S.contracts=[];S.ida=[];
