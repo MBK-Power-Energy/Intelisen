@@ -1,4 +1,4 @@
-import {setupSenOverview} from './web/sen-overview.js';
+import {setupSenOverview} from './web/sen-overview.js?v=20261012-pill-ranges';
 import {setupImbalanceOverview} from './web/imbalance-overview.js';
 setupSenOverview();
 setupImbalanceOverview();
