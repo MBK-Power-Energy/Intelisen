@@ -1,5 +1,6 @@
 create table if not exists nordpool_private.history_queue(delivery_date date not null,slot integer not null,attempted_at timestamptz,finished_at timestamptz,error_message text,primary key(delivery_date,slot));
 alter table nordpool_private.history_queue enable row level security;
+alter table nordpool_private.history_queue add column if not exists priority integer not null default 0;
 insert into nordpool_private.history_queue(delivery_date,slot) select d::date,s from generate_series('2026-10-01'::timestamp,((now() at time zone 'Europe/Oslo')::date-1)::timestamp,interval '1 day') d cross join generate_series(0,3) s on conflict do nothing;
 create or replace function public.tick_nordpool_history() returns text language plpgsql security definer set search_path=pg_catalog,public,extensions as $$
 declare q record;username text;password text;subscription text;token text;r record;body jsonb;g jsonb;c jsonb;a timestamptz;b timestamptz;n integer;
@@ -7,7 +8,8 @@ begin
  if not pg_try_advisory_xact_lock(71386424) then return 'skipped';end if;
  -- Keep a 1 GiB margin below the Pro included disk allowance.
  if pg_database_size(current_database())>7::bigint*1024*1024*1024 then return 'capacity_limit';end if;
- select * into q from nordpool_private.history_queue where finished_at is null order by (slot=0) desc,attempted_at nulls first,delivery_date,slot limit 1;
+ insert into nordpool_private.history_queue(delivery_date,slot) select d::date,s from generate_series('2026-10-01'::timestamp,((now() at time zone 'Europe/Oslo')::date-1)::timestamp,interval '1 day') d cross join generate_series(0,3) s on conflict do nothing;
+ select * into q from nordpool_private.history_queue where finished_at is null order by priority desc,(slot=0) desc,attempted_at nulls first,delivery_date,slot limit 1;
  if not found then return 'complete';end if;
  begin
  select decrypted_secret into username from vault.decrypted_secrets where name='np_username';

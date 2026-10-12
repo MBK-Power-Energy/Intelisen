@@ -77,10 +77,10 @@ begin
  if p_model not in ('era5','ecmwf_ifs') or p_batch not between 0 and 12 then raise exception 'Invalid model/batch';end if;
  if not pg_try_advisory_xact_lock(71386428) then return 'skipped';end if;
  select string_agg(latitude::text,',' order by id),string_agg(longitude::text,',' order by id),array_agg(id order by id) into lats,lons,ids from public.weather_cities where id between p_batch*5 and p_batch*5+4;
- start_day:=greatest('2026-10-01'::date,(now() at time zone 'UTC')::date-10);
+ start_day:=least(date_trunc('month',now() at time zone 'Europe/Bucharest')::date,(now() at time zone 'Europe/Bucharest')::date-10);
  begin
  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT_MS','30000');
- select * into r from extensions.http_get('https://archive-api.open-meteo.com/v1/archive?latitude='||lats||'&longitude='||lons||'&start_date='||start_day||'&end_date='||(now() at time zone 'UTC')::date||'&hourly=temperature_2m&models='||p_model||'&timezone=UTC&timeformat=unixtime');
+ select * into r from extensions.http_get('https://archive-api.open-meteo.com/v1/archive?latitude='||lats||'&longitude='||lons||'&start_date='||start_day||'&end_date='||(now() at time zone 'Europe/Bucharest')::date||'&hourly=temperature_2m&models='||p_model||'&timezone=Europe%2FBucharest&timeformat=unixtime');
  if r.status<>200 then raise exception 'Weather HTTP %',r.status;end if;
  body:=r.content::jsonb;if jsonb_typeof(body)='object' then body:=jsonb_build_array(body);end if;
  if jsonb_array_length(body)<>array_length(ids,1) then raise exception 'City count mismatch';end if;
