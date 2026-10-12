@@ -6,4 +6,17 @@ function recover(){
 }
 window.addEventListener('unhandledrejection',()=>{if(status.textContent==='Verific sesiunea…')recover();});
 timer=setTimeout(()=>{if(status.textContent==='Verific sesiunea…')recover();},20000);
-try{await import('./app.js?v=20261012-contract-titles');}catch(error){recover();console.error('Intraday initialization failed',error);}finally{clearTimeout(timer);}
+try{
+ const hash=new URLSearchParams(location.hash.slice(1)),tokenHash=hash.get('token_hash');
+ let confirmationFailed=hash.has('error');
+ if(tokenHash){
+  const {confirmEmailLink}=await import('./email-link.js?v=20261012-confirm-link');
+  const {PROJECTS}=await import('../web/project-config.js');
+  const client=supabase.createClient(PROJECTS.nordpool.url,PROJECTS.nordpool.key,{auth:{detectSessionInUrl:false}});
+  await confirmEmailLink(client,tokenHash,status);
+  client.auth.stopAutoRefresh();
+  confirmationFailed=status.textContent.startsWith('Linkul a expirat');
+ }
+ await import('./app.js?v=20261012-confirm-link');
+ if(confirmationFailed)status.textContent='Linkul a expirat sau a fost deja folosit. Solicită un link nou prin Login.';
+}catch(error){recover();console.error('Intraday initialization failed',error);}finally{clearTimeout(timer);}
