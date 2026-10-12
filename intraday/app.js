@@ -3,7 +3,7 @@ import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=2026101
 import {marketReference,contractReference,emaLine} from './market-reference.js';
 import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';
-const client=supabase.createClient(url,key),fmt=v=>number(v)===null?'—':new Intl.NumberFormat('ro-RO',{maximumFractionDigits:3}).format(v),clock=v=>new Date(v).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+const client=supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}),fmt=v=>number(v)===null?'—':new Intl.NumberFormat('ro-RO',{maximumFractionDigits:3}).format(v),clock=v=>new Date(v).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
 let session=null,contracts=[],charts=[],generation=0,busy=false,lastSelection='',lastBars=null,market=null,tradeViews=[];
 const tradeCache=new Map();
 const workspace=new TradesWorkspace($('tradesWorkspace'),()=>load(),()=>showTradeTable());
@@ -30,7 +30,7 @@ $('loginForm').onsubmit=async e=>{
 $('codeForm').onsubmit=async event=>{
  event.preventDefault();if(!$('email').reportValidity())return;
  const button=event.target.querySelector('button'),feedback=$('codeFeedback');button.disabled=true;feedback.hidden=false;feedback.textContent='Verific codul…';
- try{const {data,error}=await client.auth.verifyOtp({email:$('email').value.trim(),token:$('emailCode').value.trim(),type:'email'});if(error)throw error;$('emailCode').value='';feedback.textContent='Autentificare confirmată.';await auth(data.session);}
+ try{const {data,error}=await client.auth.verifyOtp({email:$('email').value.trim(),token:$('emailCode').value.trim(),type:'email'});if(error)throw error;history.replaceState(null,'',location.pathname+location.search);$('emailCode').value='';feedback.textContent='Autentificare confirmată.';await auth(data.session);}
  catch{feedback.textContent='Codul este invalid, expirat sau deja folosit. Solicită un cod nou și introdu-l din ultimul email.';}
  finally{button.disabled=false;}
 };
