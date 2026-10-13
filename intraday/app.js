@@ -1,13 +1,13 @@
 import {volumeComparison,volumeShares,VOLUME_SERIES} from './volume-data.js?v=20261013-volume-shares';
 import {createMarketChart} from './market-chart.js?v=20261012-contract-titles';
-import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261013-related-qh';
+import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261013-qh-pair';
 import {marketReference,contractReference,emaLine} from './market-reference.js';
 import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';
 const client=supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}),fmt=v=>number(v)===null?'—':new Intl.NumberFormat('ro-RO',{maximumFractionDigits:3}).format(v),clock=v=>new Date(v).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
 let session=null,contracts=[],charts=[],generation=0,busy=false,lastSelection='',lastBars=null,market=null,tradeViews=[];
-const tradeCache=new Map();let volumeRows=[],qhPlots=[];
-const workspace=new TradesWorkspace($('tradesWorkspace'),()=>load(),()=>showTradeTable());
+const tradeCache=new Map();let volumeRows=[];
+const workspace=new TradesWorkspace($('tradesWorkspace'),()=>{$('tradeLayout').value=workspace.state.layout;load();},()=>showTradeTable());
 $('tradeLayout').value=workspace.state.layout;$('syncCharts').checked=workspace.state.sync;
 $('tradeLayout').onchange=()=>workspace.setLayout($('tradeLayout').value);
 $('syncCharts').onchange=()=>workspace.setSync($('syncCharts').checked);
@@ -18,7 +18,7 @@ $('viewTabs').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home
 const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bucharest',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());$('from').value=today;$('to').value=today;$('volumeDay').value=today;
 const message=t=>$('message').textContent=t;
 async function allRows(table,filters){let rows=[];for(let start=0;;start+=1000){let q=client.from(table).select('*').range(start,start+999);q=filters(q);const {data,error}=await q;if(error)throw Error(error.message);rows.push(...data);if(data.length<1000)return rows;if(rows.length>250000)throw Error('Interval prea mare. Selectează mai puține zile.');}}
-function clearPrivate(){generation++;for(const plot of qhPlots)Plotly.purge(plot);qhPlots=[];contracts=[];volumeRows=[];Plotly.purge($('auctionVolumesChart'));Plotly.purge($('auctionSharesChart'));lastBars=null;tradeViews=[];tradeCache.clear();for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';for(const pane of workspace.nodes){pane.querySelector('[data-related-qh]').replaceChildren();}for(const pane of workspace.nodes)for(const name of ['chartTitle','cursor','legend'])pane.querySelector('[data-control="'+name+'"]').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=!!session;$('logout').hidden=!session;}
+function clearPrivate(){generation++;contracts=[];volumeRows=[];Plotly.purge($('auctionVolumesChart'));Plotly.purge($('auctionSharesChart'));lastBars=null;tradeViews=[];tradeCache.clear();for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';for(const pane of workspace.nodes)for(const name of ['chartTitle','cursor','legend'])pane.querySelector('[data-control="'+name+'"]').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=!!session;$('logout').hidden=!session;}
 async function auth(next){session=next;if(!session){clearPrivate();message('Autentifică-te pentru a vedea datele Nord Pool.');return;}
  const {data,error}=await client.rpc('nordpool_authorized').abortSignal(AbortSignal.timeout(15000));if(error||data!==true){clearPrivate();message('Acest cont nu are acces la Nord Pool.');return;}$('login').hidden=true;$('private').hidden=false;$('loginShortcut').hidden=true;$('logout').hidden=false;await load();}
 $('loginForm').onsubmit=async e=>{
@@ -60,7 +60,7 @@ let data;data={...b,details:b.contracts.map(p=>({contract:p,candles:b.candles.fi
 if(ticket!==generation)return;draw(data);
 }
 function table(headers,rows){const tr=document.createElement('tr');headers.forEach(x=>{const th=document.createElement('th');th.textContent=x;tr.append(th);});$('head').replaceChildren(tr);$('rows').replaceChildren(...rows.map(values=>{const tr=document.createElement('tr');values.forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td);});return tr;}));}
-function disposeCharts(){for(const c of charts)c.remove();charts=[];for(const plot of qhPlots)Plotly.purge(plot);qhPlots=[];}
+function disposeCharts(){for(const c of charts)c.remove();charts=[];}
 function draw(data){
  const selection=[$('view').value,$('from').value,$('to').value,$('duration').value].join('|');
  const oldRange=selection===lastSelection?charts[0]?.price.timeScale().getVisibleLogicalRange():null;
@@ -76,7 +76,7 @@ function buildTradeView(chosen,rows,settings){
  return {data,chosen,total,settings};
 }
 async function renderTrades(ticket){
- const settingsList=workspace.settings,chosen=settingsList.map(selectedContracts),related=settingsList.map(settings=>settings.duration===60&&settings.showQh?Array.from({length:4},(_,q)=>{const child={...settings,duration:15,contract:(settings.contract-1)*4+q+1,showQh:false};return {settings:child,chosen:selectedContracts(child)};}):[]),ids=[...new Set([...chosen.flat(),...related.flat().flatMap(child=>child.chosen)].map(r=>r.contract_id))].sort();
+ const chosen=workspace.settings.map(selectedContracts),ids=[...new Set(chosen.flat().map(r=>r.contract_id))].sort();
  const cacheKey=ids.join('|');let cached=tradeCache.get(cacheKey),rows=[];
  if(ids.length){if(!cached||Date.now()-cached.at>45000){rows=await allRows('nordpool_trades',q=>q.eq('area','TEL').in('contract_id',ids).order('trade_time').order('trade_id'));if(ticket!==generation||!session)return;cached={at:Date.now(),rows};tradeCache.set(cacheKey,cached);if(tradeCache.size>3)tradeCache.delete(tradeCache.keys().next().value);}else rows=cached.rows;}
  if(ticket!==generation||!session)return;
@@ -87,20 +87,6 @@ async function renderTrades(ticket){
  root.querySelector('[data-control="volumeChart"]').hidden=!settings.showVolume;
  const selection=period+'|'+label+'|'+settings.resolution;
  const runtime=createMarketChart(data,{root,title:label+' · TEL · '+$('from').value+' – '+$('to').value+' · '+data.details.length+' contracte',oldRange:oldRanges.get(selection)||null});runtime.selection=selection;charts.push(runtime);
- const grid=root.querySelector('[data-related-qh]');grid.replaceChildren();grid.hidden=!related[i].length;
- if(related[i].length){
-  const title=document.createElement('h3');title.textContent='QH aferente '+label;grid.append(title);
-  const plot=document.createElement('div');plot.className='qh-combined-chart';grid.append(plot);qhPlots.push(plot);
-  const dark=document.documentElement.dataset.theme==='dark',colors=['#4285f4','#f6a35a','#a879d5','#00a892'],traces=[];
-  related[i].forEach((child,q)=>{const view=buildTradeView(child.chosen,rows,child.settings),name='QH-'+String(child.settings.contract).padStart(2,'0');
-   for(const group of view.data.details){const suffix=' · '+clock(group.contract.deliveryStart),x=group.candles.map(c=>new Date(c.time*1000).toISOString());
-    traces.push({type:'scatter',mode:'lines+markers',name:name+suffix,legendgroup:name,x,y:group.candles.map(c=>c.close),customdata:group.candles.map(c=>clock(c.time*1000)),line:{color:colors[q],width:1.5},marker:{size:3},hovertemplate:name+' · %{customdata}<br>Preț: %{y:.2f} EUR/MWh<extra></extra>'});
-    if(settings.showVwap){const key=Object.keys(view.data.lines).find(k=>k==='VWAP · '+group.contract.contractName);const points=view.data.lines[key]||[];traces.push({type:'scatter',mode:'lines',name:name+' VWAP'+suffix,legendgroup:name,x:points.map(p=>new Date(p.time*1000).toISOString()),y:points.map(p=>p.value),line:{color:colors[q],width:1,dash:'dot'},hovertemplate:name+' VWAP: %{y:.2f} EUR/MWh<extra></extra>'});}
-   }
-  });
-  const tickTimes=[...new Set(traces.flatMap(trace=>trace.x))].sort(),ticks=tickTimes.filter((_,n)=>n%Math.max(1,Math.ceil(tickTimes.length/8))===0);
-  Plotly.react(plot,traces,{height:360,uirevision:period+'|'+label,margin:{l:70,r:20,t:45,b:55},paper_bgcolor:dark?'#131f28':'#fff',plot_bgcolor:dark?'#131f28':'#fff',font:{color:dark?'#e9f1f3':'#172033'},xaxis:{title:{text:'Ora tranzacției · EET/EEST'},type:'date',tickvals:ticks,ticktext:ticks.map(time=>clock(time))},yaxis:{title:{text:'EUR/MWh'}},hovermode:'closest',legend:{orientation:'h',y:1.15},annotations:traces.length?[]:[{text:'Fără tranzacții QH pentru selecția curentă.',xref:'paper',yref:'paper',x:.5,y:.5,showarrow:false}]},{responsive:true,displaylogo:false});
- }
 
  });
  synchronizeCharts(charts,()=>workspace.state.sync);
