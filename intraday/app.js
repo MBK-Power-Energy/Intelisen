@@ -1,3 +1,4 @@
+import {volumeComparison,VOLUME_SERIES} from './volume-data.js?v=20261013-volumes';
 import {createMarketChart} from './market-chart.js?v=20261012-contract-titles';
 import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261012-contract-titles';
 import {marketReference,contractReference,emaLine} from './market-reference.js';
@@ -5,7 +6,7 @@ import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';
 const client=supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}),fmt=v=>number(v)===null?'—':new Intl.NumberFormat('ro-RO',{maximumFractionDigits:3}).format(v),clock=v=>new Date(v).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
 let session=null,contracts=[],charts=[],generation=0,busy=false,lastSelection='',lastBars=null,market=null,tradeViews=[];
-const tradeCache=new Map();
+const tradeCache=new Map();let volumeRows=[];
 const workspace=new TradesWorkspace($('tradesWorkspace'),()=>load(),()=>showTradeTable());
 $('tradeLayout').value=workspace.state.layout;$('syncCharts').checked=workspace.state.sync;
 $('tradeLayout').onchange=()=>workspace.setLayout($('tradeLayout').value);
@@ -16,7 +17,7 @@ $('viewTabs').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home
 const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bucharest',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());$('from').value=today;$('to').value=today;
 const message=t=>$('message').textContent=t;
 async function allRows(table,filters){let rows=[];for(let start=0;;start+=1000){let q=client.from(table).select('*').range(start,start+999);q=filters(q);const {data,error}=await q;if(error)throw Error(error.message);rows.push(...data);if(data.length<1000)return rows;if(rows.length>250000)throw Error('Interval prea mare. Selectează mai puține zile.');}}
-function clearPrivate(){generation++;contracts=[];lastBars=null;tradeViews=[];tradeCache.clear();for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';for(const pane of workspace.nodes)for(const name of ['chartTitle','cursor','legend'])pane.querySelector('[data-control="'+name+'"]').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=!!session;$('logout').hidden=!session;}
+function clearPrivate(){generation++;contracts=[];volumeRows=[];Plotly.purge($('auctionVolumesChart'));lastBars=null;tradeViews=[];tradeCache.clear();for(const c of charts)c.remove();charts=[];$('rows').replaceChildren();$('head').replaceChildren();$('status').textContent='';$('cursor').textContent='';for(const pane of workspace.nodes)for(const name of ['chartTitle','cursor','legend'])pane.querySelector('[data-control="'+name+'"]').replaceChildren();$('private').hidden=true;$('login').hidden=false;$('loginShortcut').hidden=!!session;$('logout').hidden=!session;}
 async function auth(next){session=next;if(!session){clearPrivate();message('Autentifică-te pentru a vedea datele Nord Pool.');return;}
  const {data,error}=await client.rpc('nordpool_authorized').abortSignal(AbortSignal.timeout(15000));if(error||data!==true){clearPrivate();message('Acest cont nu are acces la Nord Pool.');return;}$('login').hidden=true;$('private').hidden=false;$('loginShortcut').hidden=true;$('logout').hidden=false;await load();}
 $('loginForm').onsubmit=async e=>{
@@ -45,9 +46,11 @@ async function load(){if(!session)return;if(busy){generation++;return;}busy=true
  market=await marketReference($('from').value,$('to').value);if(ticket!==generation)return;await render(ticket);
  }catch(e){message('Citirea Nord Pool a eșuat: '+e.message);}finally{busy=false;if(ticket!==generation&&session)load();}}
 async function render(ticket){
- const trades=$('view').value==='trades';
- $('productLabel').hidden=trades;$('workspaceControls').hidden=!trades;$('tradesWorkspace').hidden=!trades;$('overviewChartSection').hidden=trades;
+ const trades=$('view').value==='trades',volumes=$('view').value==='volumes';
+ $('volumesSection').hidden=!volumes;$('contractVolumesSection').hidden=true;
+ $('productLabel').hidden=trades;$('workspaceControls').hidden=!trades;$('tradesWorkspace').hidden=!trades;$('overviewChartSection').hidden=trades||volumes;
  document.body.classList.toggle('multi-trades',trades&&workspace.state.layout!=='1');
+ if(volumes){message('Volume DA/IDA: colectare cloud la 30 minute · ID: colectare la 5 minute. Datele se actualizează automat.');const rows=await allRows('nordpool_auction_volumes',q=>q.eq('area','TEL').gte('delivery_date',$('from').value).lte('delivery_date',$('to').value).order('interval_start').order('market'));if(ticket!==generation||!session)return;disposeCharts();volumeRows=rows;drawVolumeComparison();return;}
  if(trades){await renderTrades(ticket);return;}
  const b=overview(contracts.filter(r=>(timestamp(r.payload.deliveryEnd)-timestamp(r.payload.deliveryStart))/60===Number($('duration').value)));
 let data;data={...b,details:b.contracts.map(p=>({contract:p,candles:b.candles.filter(c=>c.time===timestamp(p.deliveryStart)),volumes:b.volumes.filter(c=>c.time===timestamp(p.deliveryStart)),ref:contractReference(market,p)})),lines:{VWAP:b.lines.averagePrice,VWAP3H:b.lines.averagePriceLast3H,VWAP1H:b.lines.averagePriceLast1H,PZU:b.contracts.flatMap(p=>{const r=contractReference(market,p);return r.pzu===null?[{time:timestamp(p.deliveryStart)}]:[{time:timestamp(p.deliveryStart),value:r.pzu}];})}};
@@ -96,7 +99,7 @@ client.auth.onAuthStateChange((event,next)=>{setTimeout(()=>auth(next),0);});
 const {data:{session:initial}}=await client.auth.getSession();if(!session)await auth(initial);
 setInterval(()=>{if(session&&!document.hidden)load();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&session)load();});
 
-window.addEventListener('intelisen-theme-change',()=>{if(!session)return;if($('view').value==='trades')renderTrades(generation);else if(lastBars)draw(lastBars);});
+window.addEventListener('intelisen-theme-change',()=>{if(!session)return;if($('view').value==='volumes')drawVolumeComparison();else if($('view').value==='trades')renderTrades(generation);else if(lastBars)draw(lastBars);});
 
 for(const id of ['showPzu','showIda1','showIda2','showIda3'])$(id).onchange=()=>{if(lastBars)draw(lastBars);};
 
@@ -109,3 +112,14 @@ function drawContractVolumes(data){
  Plotly.react(target,[{type:'bar',name:'Buy',x:labels,y:rows.map(p=>number(p.buyVolume)),marker:{color:'#26a69a'}},{type:'bar',name:'Sell',x:labels,y:rows.map(p=>number(p.sellVolume)),marker:{color:'#ef5350'}}],{height:300,barmode:'group',margin:{l:65,r:20,t:20,b:100},paper_bgcolor:dark?'#131f28':'#fff',plot_bgcolor:dark?'#131f28':'#fff',font:{color:dark?'#e9f1f3':'#172033'},yaxis:{title:{text:'Volum (MW)'},rangemode:'tozero'},xaxis:{title:{text:'Contract · livrare EET/EEST'}},legend:{orientation:'h',y:-.4}}, {responsive:true,displaylogo:false});
 }
 $('showContractVolumes').onchange=()=>{if(lastBars)drawContractVolumes(lastBars);};
+
+function drawVolumeComparison(){
+ if(!session||$('view').value!=='volumes'||!market)return;
+ const side=$('volumeSide').value,sides=side==='both'?['buy','sell']:[side],minutes=Number($('duration').value),dark=document.documentElement.dataset.theme==='dark';
+ const values=new Map();for(const direction of sides)for(const row of volumeComparison(market,volumeRows,contracts,minutes,direction)){if(!values.has(row.time))values.set(row.time,{time:row.time});values.get(row.time)[direction]=row;}
+ const rows=[...values.values()].sort((a,b)=>a.time-b.time),colors=['#64748b','#00a896','#3b82f6','#f59e0b','#a855f7','#ef5350'],labels=rows.map(r=>clock(r.time));
+ Plotly.react($('auctionVolumesChart'),VOLUME_SERIES.flatMap((name,i)=>sides.map(direction=>({type:'bar',name,legendgroup:name,showlegend:direction===sides[0],yaxis:sides.length===2&&direction==='sell'?'y2':'y',x:rows.map(r=>new Date(r.time).toISOString()),y:rows.map(r=>r[direction]?.[name]??null),customdata:labels,marker:{color:colors[i]},hovertemplate:'%{customdata}<br>'+name+' '+direction.toUpperCase()+': %{y:.2f} MW<extra></extra>'}))),{height:460,barmode:'stack',bargap:0.12,uirevision:[$('from').value,$('to').value,minutes,side].join('|'),annotations:sides.length===2?[{text:'Buy',xref:'paper',yref:'paper',x:0,y:1.04,showarrow:false},{text:'Sell',xref:'paper',yref:'paper',x:0,y:.48,showarrow:false}]:[],margin:{l:70,r:20,t:70,b:70},paper_bgcolor:dark?'#131f28':'#fff',plot_bgcolor:dark?'#131f28':'#fff',font:{color:dark?'#e9f1f3':'#172033'},hovermode:'x unified',yaxis:{title:{text:'MW'},rangemode:'tozero',domain:sides.length===2?[.56,1]:[0,1]},yaxis2:{title:{text:'MW'},rangemode:'tozero',domain:[0,.44]},xaxis:{anchor:sides.length===2?'y2':'y',type:'date',tickvals:rows.filter((_,i)=>i%Math.max(1,Math.ceil(rows.length/8))===0).map(r=>new Date(r.time).toISOString()),ticktext:labels.filter((_,i)=>i%Math.max(1,Math.ceil(rows.length/8))===0)},legend:{orientation:'h',y:1.2}},{responsive:true,displaylogo:false});
+ const missing=VOLUME_SERIES.filter(name=>!rows.some(r=>sides.some(direction=>r[direction]?.[name]!=null)));$('volumesHint').textContent='Bare stivuite pe sursă · Buy și Sell în MW.'+(missing.length?' Fără valori disponibile: '+missing.join(', ')+'. Licitațiile anulate sau nepublicate nu sunt afișate ca zero.':'');
+ $('tableTitle').textContent='Volume · MW';table(['Interval · EET/EEST',...VOLUME_SERIES.flatMap(name=>sides.map(direction=>name+' '+(direction==='buy'?'Buy':'Sell')))],rows.map(r=>[clock(r.time),...VOLUME_SERIES.flatMap(name=>sides.map(direction=>fmt(r[direction]?.[name])))]));
+}
+$('volumeSide').onchange=drawVolumeComparison;
