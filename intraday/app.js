@@ -1,6 +1,6 @@
 import {volumeComparison,volumeShares,VOLUME_SERIES} from './volume-data.js?v=20261013-volume-shares';
 import {createMarketChart} from './market-chart.js?v=20261012-contract-titles';
-import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261013-qh-pair';
+import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261013-qh-multiple';
 import {marketReference,contractReference,emaLine} from './market-reference.js';
 import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';
@@ -67,7 +67,7 @@ function draw(data){
  disposeCharts();lastSelection=selection;lastBars=data;drawContractVolumes(data);
  charts=[createMarketChart(data,{title:'Overview · TEL · '+$('from').value+' – '+$('to').value+' · '+(data.details?.length||0)+' contracte',oldRange})];
 }
-function selectedContracts(settings){return contracts.filter(r=>(timestamp(r.payload.deliveryEnd)-timestamp(r.payload.deliveryStart))/60===settings.duration&&Number(r.ph??r.payload.contractName.match(/-(\d+)$/)?.[1])===settings.contract);}
+function selectedContracts(settings){return contracts.filter(r=>(timestamp(r.payload.deliveryEnd)-timestamp(r.payload.deliveryStart))/60===settings.duration&&(settings.qhContracts||[settings.contract]).includes(Number(r.ph??r.payload.contractName.match(/-(\d+)$/)?.[1])));}
 function buildTradeView(chosen,rows,settings){
  const ids=new Set(chosen.map(r=>r.contract_id));rows=rows.filter(r=>ids.has(r.contract_id));
  const groups=chosen.map(r=>({contract:r,b:tradeBars(rows.filter(t=>t.contract_id===r.contract_id),settings.resolution),ref:contractReference(market,r.payload)})).filter(g=>g.b.candles.length);
@@ -83,7 +83,7 @@ async function renderTrades(ticket){
  const period=$('from').value+'|'+$('to').value;
  const oldRanges=new Map(charts.map(c=>[c.selection,c.price.timeScale().getVisibleLogicalRange()]));
  disposeCharts();tradeViews=chosen.map((list,i)=>buildTradeView(list,rows,workspace.settings[i]));
- tradeViews.forEach((view,i)=>{const {settings,data}=view,root=workspace.nodes[i],prefix={60:'PH',30:'HH',15:'QH'}[settings.duration],label=prefix+'-'+String(settings.contract).padStart(2,'0');
+ tradeViews.forEach((view,i)=>{const {settings,data}=view,root=workspace.nodes[i],prefix={60:'PH',30:'HH',15:'QH'}[settings.duration],label=settings.qhContracts?settings.qhContracts.map(n=>'QH-'+String(n).padStart(2,'0')).join(' / ')||'QH · fără selecție':prefix+'-'+String(settings.contract).padStart(2,'0');
  root.querySelector('[data-control="volumeChart"]').hidden=!settings.showVolume;
  const selection=period+'|'+label+'|'+settings.resolution;
  const runtime=createMarketChart(data,{root,title:label+' · TEL · '+$('from').value+' – '+$('to').value+' · '+data.details.length+' contracte',oldRange:oldRanges.get(selection)||null});runtime.selection=selection;charts.push(runtime);
