@@ -11,3 +11,8 @@ export function volumeComparison(store,auctions,contracts,minutes,side){
  const step=minutes*60000,slots=new Set();for(const series of points.values())for(const t of series.keys())slots.add(Math.floor(t/step)*step);
  return [...slots].sort((a,b)=>a-b).map(time=>({time,...Object.fromEntries(VOLUME_SERIES.map(name=>{const series=points.get(name),values=Array.from({length:minutes/15},(_,i)=>series.get(time+i*900000));return [name,values.every(Number.isFinite)?values.reduce((a,b)=>a+b,0)/values.length:null];}))}));
 }
+
+export function volumeShares(values){
+ const total=VOLUME_SERIES.reduce((sum,name)=>sum+(numeric(values[name])??0),0);
+ return Object.fromEntries(VOLUME_SERIES.map(name=>[name,total>0&&numeric(values[name])!==null?100*Number(values[name])/total:null]));
+}
