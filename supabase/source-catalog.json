@@ -1,5 +1,5 @@
 {
-  "history_start": "2026-10-01",
+  "history_start": "2025-01-01",
   "excluded_providers": [
     "Volue"
   ],
@@ -16,7 +16,8 @@
         "Trades/ByDeliveryStart",
         "Trades/ByTradeTime"
       ],
-      "trade_side": "not provided; never infer buy/sell"
+      "trade_side": "not provided; never infer buy/sell",
+      "history_start": "2026-10-01"
     },
     "opcom_pzu": {
       "project": "Intelisen",

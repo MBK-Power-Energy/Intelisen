@@ -1,6 +1,6 @@
 create table if not exists damas_private.sen_history(delivery_date date primary key,attempted_at timestamptz,finished_at timestamptz);
 alter table damas_private.sen_history enable row level security;
-insert into damas_private.sen_history(delivery_date) select d::date from generate_series('2026-10-01'::timestamp,((now() at time zone 'Europe/Bucharest')::date-1)::timestamp,interval '1 day') d on conflict do nothing;
+insert into damas_private.sen_history(delivery_date) select d::date from generate_series('2025-01-01'::timestamp,((now() at time zone 'Europe/Bucharest')::date-1)::timestamp,interval '1 day') d on conflict do nothing;
 create or replace function public.sync_sen_day(p_day date)
 returns jsonb language plpgsql security definer
 set search_path = pg_catalog, public, extensions
@@ -83,7 +83,7 @@ revoke all on function public.sync_sen_day(date) from public,anon,authenticated;
 create or replace function public.tick_sen_history() returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
 declare q record;r jsonb;
 begin
- select * into q from damas_private.sen_history where finished_at is null order by attempted_at nulls first,delivery_date limit 1;
+ select * into q from damas_private.sen_history where finished_at is null and (select pg_database_size(current_database()))<7::bigint*1024*1024*1024 order by attempted_at nulls first,delivery_date limit 1;
  if not found then return jsonb_build_object('status','complete');end if;
  r:=public.sync_sen_day(q.delivery_date);
  update damas_private.sen_history set attempted_at=now(),finished_at=case when r->>'status' in ('ok','partial') then now() else null end where delivery_date=q.delivery_date;

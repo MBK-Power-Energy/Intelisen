@@ -64,7 +64,7 @@ create policy entsoe_runs_public_read on public.entsoe_runs for select to anon,a
 grant select on public.entsoe_runs to anon,authenticated;
 create table if not exists damas_private.entsoe_queue(dataset text not null,delivery_date date not null,attempted_at timestamptz,finished_at timestamptz,primary key(dataset,delivery_date));
 alter table damas_private.entsoe_queue enable row level security;
-insert into damas_private.entsoe_queue select name,d::date,null,null from damas_private.entsoe_profiles cross join generate_series('2026-10-01'::timestamp,(now() at time zone 'Europe/Bucharest')::date::timestamp,interval '1 day') d on conflict do nothing;
+insert into damas_private.entsoe_queue select name,d::date,null,null from damas_private.entsoe_profiles cross join generate_series('2025-01-01'::timestamp,(now() at time zone 'Europe/Bucharest')::date::timestamp,interval '1 day') d on conflict do nothing;
 create or replace function public.sync_entsoe_document(p_name text,p_day date) returns text language plpgsql security definer set search_path=pg_catalog,public,extensions as $$
 declare p record;token text;url text;kv record;r record;x xml;cnt integer; a timestamptz;b timestamptz;
 begin
@@ -97,7 +97,7 @@ begin
  slot:=mod(floor(extract(epoch from now())/60)::bigint,(select count(*) from damas_private.entsoe_profiles))::integer;
  select * into p from damas_private.entsoe_profiles where id=slot;
  perform public.sync_entsoe_document(p.name,(now() at time zone 'Europe/Bucharest')::date);
- select * into q from damas_private.entsoe_queue where finished_at is null order by attempted_at nulls first,delivery_date,dataset limit 1;
+ select * into q from damas_private.entsoe_queue where finished_at is null and (select pg_database_size(current_database()))<7::bigint*1024*1024*1024 order by attempted_at nulls first,delivery_date,dataset limit 1;
  if found then result:=public.sync_entsoe_document(q.dataset,q.delivery_date);update damas_private.entsoe_queue set attempted_at=now(),finished_at=case when result in ('ok','not_published') then now() else null end where dataset=q.dataset and delivery_date=q.delivery_date;end if;
 end $$;
 revoke all on function public.tick_entsoe() from public,anon,authenticated;
