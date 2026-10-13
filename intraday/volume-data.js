@@ -7,9 +7,10 @@ export function volumeComparison(store,auctions,contracts,minutes,side){
  // OPCOM quarterly volume is energy (MWh); divide by 0.25 h to compare power (MW).
  for(const [time,value]of store.values.get('PZU volum '+side)||[])put('PZU-O',time,value*4);
  for(const row of auctions){const name=markets[row.market];if(!name||!['Final','Preliminary'].includes(row.status))continue;const start=Date.parse(row.interval_start),end=Date.parse(row.interval_end);for(let t=start;t<end;t+=900000)put(name,t,row[side+'_mw']);}
- for(const row of contracts){const p=row.payload,start=Date.parse(p.deliveryStart),end=Date.parse(p.deliveryEnd);if(end-start!==minutes*60000)continue;for(let t=start;t<end;t+=900000)put('ID',t,p[side==='buy'?'buyVolume':'sellVolume']);}
+ // Sum power from every contract covering each quarter, then average into the selected period.
+ for(const row of contracts){const p=row.payload,start=Date.parse(p.deliveryStart),end=Date.parse(p.deliveryEnd),value=numeric(p[side==='buy'?'buyVolume':'sellVolume']);if(value===null||!Number.isFinite(start+end)||end<=start||(end-start)%900000!==0)continue;for(let t=start;t<end;t+=900000)put('ID',t,(points.get('ID').get(t)??0)+value);}
  const step=minutes*60000,slots=new Set();for(const series of points.values())for(const t of series.keys())slots.add(Math.floor(t/step)*step);
- return [...slots].sort((a,b)=>a-b).map(time=>({time,...Object.fromEntries(VOLUME_SERIES.map(name=>{const series=points.get(name),values=Array.from({length:minutes/15},(_,i)=>series.get(time+i*900000));return [name,values.every(Number.isFinite)?values.reduce((a,b)=>a+b,0)/values.length:null];}))}));
+ return [...slots].sort((a,b)=>a-b).map(time=>({time,...Object.fromEntries(VOLUME_SERIES.map(name=>{const series=points.get(name),values=Array.from({length:minutes/15},(_,i)=>series.get(time+i*900000));return [name,name==='ID'?(values.some(Number.isFinite)?values.reduce((a,b)=>a+(b??0),0)/values.length:null):values.every(Number.isFinite)?values.reduce((a,b)=>a+b,0)/values.length:null];}))}));
 }
 
 export function volumeShares(values){

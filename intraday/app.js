@@ -1,6 +1,6 @@
-import {volumeComparison,volumeShares,VOLUME_SERIES} from './volume-data.js?v=20261013-volume-shares';
+import {volumeComparison,volumeShares,VOLUME_SERIES} from './volume-data.js?v=20261013-id-total';
 import {createMarketChart} from './market-chart.js?v=20261012-contract-titles';
-import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261013-qh-multiple';
+import {TradesWorkspace,synchronizeCharts} from './trades-workspace.js?v=20261013-id-total';
 import {marketReference,contractReference,emaLine} from './market-reference.js';
 import {overview,tradeBars,number,timestamp} from './chart-data.js';
 const $=id=>document.getElementById(id),url='https://qumxkyavlavixzaevipw.supabase.co',key='sb_publishable_mL3Wbt0duI8TslUErFWzVg_FOpQxctS';
