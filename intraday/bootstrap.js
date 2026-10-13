@@ -18,6 +18,6 @@ try{
   client.auth.stopAutoRefresh();
   confirmationFailed=status.textContent.startsWith('Linkul a expirat');
  }
- await import('./app.js?v=20261013-volume-colors');
+ await import('./app.js?v=20261013-volume-blue');
  if(confirmationFailed&&document.getElementById('private').hidden&&document.getElementById('logout').hidden)status.textContent='Linkul a expirat sau a fost deja folosit. Solicită un link nou prin Login.';
 }catch(error){recover();console.error('Intraday initialization failed',error);}finally{clearTimeout(timer);}
