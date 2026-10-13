@@ -42,7 +42,7 @@ async function load(){if(!session)return;if($('view').value==='volumes'){$('from
  const all=await allRows('nordpool_contracts',q=>q.eq('area','TEL').gte('delivery_date',$('from').value).lte('delivery_date',$('to').value).order('delivery_start').order('contract_id'));
  if(ticket!==generation)return;contracts=all;
  const {data:runs,error}=await client.from('nordpool_runs').select('*').order('id',{ascending:false}).limit(1);if(error)throw error;
- if(ticket!==generation)return;const run=runs[0];$('status').textContent=run?'Ultima actualizare: '+clock(run.finished_at||run.started_at)+' · '+run.status+' · '+contracts.length+' contracte':'Fără colectări Nord Pool încă.';
+ if(ticket!==generation)return;const run=runs[0];$('status').textContent=run?'Ultima actualizare: '+clock(run.finished_at||run.started_at):'Fără colectări Nord Pool încă.';
  message(run?.finished_at&&Date.now()-Date.parse(run.finished_at)>600000?'Nu există o colectare Nord Pool recentă. Datele afișate pot fi vechi.':run?.status==='error'?'Colectarea Nord Pool a eșuat. Datele anterioare pot fi vechi.':!run?'Colectarea Nord Pool nu este încă activată.':'Colectare cloud la 5 minute · tranzacții publicate cu aproximativ 20 min întârziere.');
  market=await marketReference($('from').value,$('to').value);if(ticket!==generation)return;await render(ticket);
  }catch(e){message('Citirea Nord Pool a eșuat: '+e.message);}finally{busy=false;if(ticket!==generation&&session)load();}}
