@@ -90,5 +90,5 @@ begin
  return r;
 end $$;
 revoke all on function public.tick_sen_history() from public,anon,authenticated;
-select cron.schedule('sen-history-minute','* * * * *','select public.tick_sen_history();');
+select cron.schedule('sen-history-minute','8,28,48 * * * *','select public.tick_sen_history();');
 select public.tick_sen_history();

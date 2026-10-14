@@ -62,7 +62,7 @@ begin
  slot:=mod(floor(extract(epoch from now())/60)::bigint,7)::integer;
  -- Two reports per minute: every report revisited within four minutes.
  for i in 0..1 loop perform public.sync_damas_report(reports[mod(slot*2+i,7)+1],(now() at time zone 'Europe/Bucharest')::date);end loop;
- select * into q from damas_private.report_backfill where finished_at is null and (select pg_database_size(current_database()))<7::bigint*1024*1024*1024 order by attempted_at nulls first,delivery_date,report limit 1;
+ select * into q from damas_private.report_backfill where finished_at is null and mod(extract(minute from now())::integer,10)=3 /* history_io_throttle */ and (attempted_at is null or attempted_at<now()-interval '1 hour') and (select pg_database_size(current_database()))<7::bigint*1024*1024*1024 order by attempted_at nulls first,delivery_date,report limit 1;
  if found then result:=public.sync_damas_report(q.report,q.delivery_date);
  update damas_private.report_backfill set attempted_at=now(),finished_at=case when result->>'status' in ('ok','empty') then now() else null end where report=q.report and delivery_date=q.delivery_date;end if;
 end $$;

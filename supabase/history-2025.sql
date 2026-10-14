@@ -41,7 +41,7 @@ begin
 end $$;
 revoke all on function public.tick_weather_history() from public,anon,authenticated;
 insert into damas_private.weather_history(model,batch,month_start) select model,batch,m::date from unnest(array['era5','ecmwf_ifs']) model cross join generate_series(0,12) batch cross join generate_series('2025-01-01'::timestamp,date_trunc('month',(now() at time zone 'Europe/Bucharest')::date)-interval '1 month',interval '1 month') m on conflict do nothing;
-select cron.schedule('weather-history-2025','*/5 * * * *','select public.tick_weather_history();');
+select cron.schedule('weather-history-2025','7,27,47 * * * *','select public.tick_weather_history();');
 insert into damas_private.sen_history(delivery_date) select d::date from generate_series('2025-01-01'::timestamp,((now() at time zone 'Europe/Bucharest')::date-1)::timestamp,interval '1 day') d on conflict do nothing;
 insert into damas_private.opcom_backfill(source,delivery_date) select s,d::date from unnest(array['opcom_pzu','opcom_ida']) s cross join generate_series('2025-01-01'::timestamp,((now() at time zone 'Europe/Bucharest')::date-1)::timestamp,interval '1 day') d on conflict do nothing;
 insert into damas_private.report_backfill(report,delivery_date) select r,d::date from unnest(array['marginalPricesOverview','finalUnintentionalDeviations','estimatedImbalancePrices','estimatedPowerSystemImbalance','dailyConsumptionOverview','activatedBalancingEnergyOverview','scheduledExchanges']) r cross join generate_series('2025-01-01'::timestamp,((now() at time zone 'Europe/Bucharest')::date-1)::timestamp,interval '1 day') d on conflict do nothing;

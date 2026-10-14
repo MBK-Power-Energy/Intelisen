@@ -69,7 +69,7 @@ begin
  perform public.sync_opcom('opcom_pzu',day);perform public.sync_opcom('opcom_ida',day);
  perform public.sync_opcom('opcom_pzu',day+1);perform public.sync_opcom('opcom_ida',day+1);
  end if;
- select * into q from damas_private.opcom_backfill where finished_at is null and (select pg_database_size(current_database()))<7::bigint*1024*1024*1024 order by attempted_at nulls first,delivery_date,source limit 1;
+ select * into q from damas_private.opcom_backfill where finished_at is null and mod(extract(minute from now())::integer,10)=2 /* history_io_throttle */ and (attempted_at is null or attempted_at<now()-interval '1 hour') and (select pg_database_size(current_database()))<7::bigint*1024*1024*1024 order by attempted_at nulls first,delivery_date,source limit 1;
  if found then result:=public.sync_opcom(q.source,q.delivery_date);update damas_private.opcom_backfill set attempted_at=now(),finished_at=case when result in ('ok','not_published') then now() else null end where source=q.source and delivery_date=q.delivery_date;end if;
 end $$;
 revoke all on function public.tick_opcom() from public,anon,authenticated;
