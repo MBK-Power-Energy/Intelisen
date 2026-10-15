@@ -1,4 +1,4 @@
-const KEY='intelisen-indicator-cache-v1';
+const KEY='intelisen-indicator-cache-v2';
 const privateKeys=['ID O','ID H','ID L','ID C','ID VWAP','ID volum buy','ID volum sell','Spread ID VWAP - PZU'];
 export function readIndicatorCache(from,to){
  try{

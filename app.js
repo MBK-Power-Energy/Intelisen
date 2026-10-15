@@ -1,5 +1,5 @@
-import {readIndicatorCache} from './web/indicator-cache.js?v=20261012-speed';
-import {loadDashboard,loadPrivateDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js?v=20261012-speed';
+import {readIndicatorCache} from './web/indicator-cache.js?v=20261015-outages';
+import {loadDashboard,loadPrivateDashboard,loadTrades,MARKETS,FUNDAMENTALS} from './web/dashboard-data.js?v=20261015-outages';
 import {nordpool} from './web/api.js';
 import {localParts,addDays} from './web/time.js?v=20261012-speed';
 'use strict';

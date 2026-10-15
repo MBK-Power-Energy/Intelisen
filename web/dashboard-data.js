@@ -5,7 +5,7 @@ import {dayRange,midnight,addDays,localParts} from './time.js?v=20261012-speed';
 
 export const MARKETS=['PZU pret','PZU volum tranzactionat','PZU volum buy','PZU volum sell','IDA1 pret','IDA2 pret','IDA3 pret','ID O','ID H','ID L','ID C','ID VWAP','Spread ID VWAP - PZU','ID volum buy','ID volum sell','PZU 15 min (RON/MWh)','PZU 30 min (RON/MWh)','PZU 60 min (RON/MWh)'];
 export const FUNDAMENTALS=['Temperatura','Consum DA','Consum Actual','Eroare consum','Solar DA','Solar ID','Solar Actual','Eroare solar DA','Eroare solar ID','Eolian DA','Eolian ID','Eolian Actual','Eroare eolian DA','Eroare eolian ID','Sarcina reziduala DA','Sarcina reziduala ID','Sarcina reziduala Actual','Import DA','Export DA','Import Total','Export Total','Import Actual','Export Actual','Indisponibilitati','ENTSO-E · Dezechilibru (MWh)','ENTSO-E · Statut dezechilibru','DAMAS · Preț dezechilibru deficit (RON/MWh)','DAMAS · Preț dezechilibru excedent (RON/MWh)','ENTSO-E · Preț dezechilibru deficit (RON/MWh)','ENTSO-E · Preț dezechilibru excedent (RON/MWh)','DAMAS · Rezervă activată (brut)','DAMAS · Volum reglaj în sus (brut)','DAMAS · Volum reglaj în jos (brut)','DAMAS · Dezechilibru estimat (brut)'];
-const coreDatasets=['load_actual','load_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','generation_actual','imbalance_volumes','imbalance_prices','outages_production_A05','outages_production_A09','outages_production_A13'];
+const coreDatasets=['load_actual','load_day_ahead','wind_solar_forecast_day_ahead','wind_solar_forecast_intraday','generation_actual','imbalance_volumes','imbalance_prices','outages_production_A05','outages_production_A09','outages_production_A13','outages_generation_A05','outages_generation_A09','outages_generation_A13'];
 const labelled={load_actual:'Consum Actual',load_day_ahead:'Consum DA'};
 const xmlCache=new Map();
 function parsedDocument(document){
@@ -16,7 +16,7 @@ function entsoe(documents,store,low,high){
   const wind=new Map(),outages=new Map();
   for(const document of documents)for(const series of parsedDocument(document)){
     const m=series.metadata;let label=labelled[document.dataset];
-    if(document.dataset.startsWith('outages_production_')){if(!m.status)m.status=document.dataset.split('_').at(-1);const old=outages.get(m.documentId+'|'+m.resourceId);if(!old||m.revision>old.metadata.revision||(m.revision===old.metadata.revision&&m.created>old.metadata.created))outages.set(m.documentId+'|'+m.resourceId,series);continue;}
+    if(/^outages_(production|generation)_/.test(document.dataset)){if(!m.status)m.status=document.dataset.split('_').at(-1);const old=outages.get(m.documentId+'|'+m.resourceId);if(!old||m.revision>old.metadata.revision||(m.revision===old.metadata.revision&&m.created>old.metadata.created))outages.set(m.documentId+'|'+m.resourceId,series);continue;}
     const version=document.dataset==='generation_actual'?'Actual':document.dataset==='wind_solar_forecast_day_ahead'?'DA':document.dataset==='wind_solar_forecast_intraday'?'ID':null;
     if(version&&m.psr==='B16')label='Solar '+version;
     if(version&&['B18','B19'].includes(m.psr))label='Eolian '+version;
